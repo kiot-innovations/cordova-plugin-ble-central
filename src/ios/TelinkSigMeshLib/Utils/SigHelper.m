@@ -22,6 +22,10 @@
  *******************************************************************************************************/
 
 #import "SigHelper.h"
+#import "SigConst.h"
+#import "SigConfigMessage.h"
+#import "SigGenericMessage.h"
+
 
 @implementation SigHelper
 
@@ -593,7 +597,7 @@
             responseOpcode = SigOpCode_SubnetBridgeStatus;
             break;
         default:
-            TeLogVerbose(@"Warning:undefault or noAck sendOpcode:0x%x",sendOpcode);
+//            TeLogVerbose(@"Warning:undefault or noAck sendOpcode:0x%x",sendOpcode);
             break;
     }
     return responseOpcode;

@@ -28,6 +28,12 @@
 #import "SigLowerTransportPdu.h"
 #import "SigControlMessage.h"
 #import "SigSegmentAcknowledgmentMessage.h"
+#import "SigPdu.h"
+#import "SigModel.h"
+#import "BackgroundTimer.h"
+#import "LibTools.h"
+#import "SigHelper.h"
+
 
 @interface SigNetworkLayer ()
 @property (nonatomic,assign) NSInteger networkTransmitCount;
@@ -56,11 +62,11 @@
 
 - (void)handleIncomingPdu:(NSData *)pdu ofType:(SigPduType)type {
     if (_networkManager.manager.dataSource == nil) {
-        TeLogError(@"this networkManager has not data.");
+        //TeLogError(@"this networkManager has not data.");
         return;
     }
     if (type == SigPduType_provisioningPdu) {
-        TeLogError(@"Provisioning is handled using ProvisioningManager.");
+        //TeLogError(@"Provisioning is handled using ProvisioningManager.");
         return;
     }
     
@@ -85,7 +91,7 @@
                     networkPdu = [SigNetworkPdu decodePdu:pdu pduType:SigPduType_networkPdu usingNetworkKey:_networkKey ivIndex:_ivIndex];
                 }
                 if (networkPdu == nil) {
-                    TeLogDebug(@"decodePdu fail.");
+                    //TeLogDebug(@"decodePdu fail.");
                     return;
                 }
                 [_networkManager.lowerTransportLayer handleNetworkPdu:networkPdu];
@@ -118,7 +124,7 @@
                         return;
                     }
                 }
-                TeLogError(@"Invalid or unsupported beacon type.");
+                //TeLogError(@"Invalid or unsupported beacon type.");
             }
             break;
         case SigPduType_proxyConfiguration:
@@ -126,7 +132,7 @@
 //                TeLogVerbose(@"receive proxyConfiguration");
                 SigNetworkPdu *proxyPdu = [SigNetworkPdu decodePdu:pdu pduType:type forMeshNetwork:_meshNetwork];
                 if (proxyPdu == nil) {
-                    TeLogInfo(@"Failed to decrypt proxy PDU");
+                    //TeLogInfo(@"Failed to decrypt proxy PDU");
                     return;
                 }
 //                TeLogVerbose(@"%@ received",proxyPdu);
@@ -134,7 +140,7 @@
             }
             break;
         default:
-            TeLogDebug(@"pdu not handle.");
+            //TeLogDebug(@"pdu not handle.");
             break;
     }
 }
@@ -159,7 +165,7 @@
         //==========telink not need this==========//
         if ([self isLocalUnicastAddress:networkPdu.destination]) {
             // No need to send messages targetting local Unicast Addresses.
-            TeLogVerbose(@"No need to send messages targetting local Unicast Addresses.");
+            //TeLogVerbose(@"No need to send messages targetting local Unicast Addresses.");
             return;
         }
         [SigBearer.share sendBlePdu:networkPdu ofType:type];
@@ -172,12 +178,12 @@
     if (type == SigPduType_networkPdu && networkTransmit != nil && networkTransmit.networkTransmitCount > 1 && !SigBearer.share.isProvisioned) {
         self.networkTransmitCount = networkTransmit.networkTransmitCount;
         __block NSInteger count = networkTransmit.networkTransmitCount;
-        __weak typeof(self) weakSelf = self;
+        //__weak typeof(self) weakSelf = self;
         BackgroundTimer *timer = [BackgroundTimer scheduledTimerWithTimeInterval:networkTransmit.networkTransmitIntervalSteps repeats:YES block:^(BackgroundTimer * _Nonnull t) {
             [SigBearer.share sendBlePdu:networkPdu ofType:type];
             count -= 1;
             if (count == 0) {
-                [weakSelf.networkTransmitTimers removeObject:t];
+                [self.networkTransmitTimers removeObject:t];
                 if (t) {
                     [t invalidate];
                 }
@@ -211,7 +217,7 @@
 //    TeLogVerbose(@"pdu,sequence=0x%x,ttl=%d",sequence,ttl);
 //    SigNetworkPdu *networkPdu = [[SigNetworkPdu alloc] initWithEncodeLowerTransportPdu:pdu pduType:type withSequence:sequence andTtl:ttl];
     if (pdu.networkKey == nil || pdu.ivIndex == nil) {
-        TeLogError(@"networkKey or ivIndex error!!!");
+        //TeLogError(@"networkKey or ivIndex error!!!");
     }
     SigNetworkPdu *networkPdu = [[SigNetworkPdu alloc] initWithEncodeLowerTransportPdu:pdu pduType:type withSequence:sequence andTtl:ttl ivIndex:pdu.ivIndex];
     pdu.networkPdu = networkPdu;
@@ -222,7 +228,7 @@
         //==========telink not need this==========//
         if ([self isLocalUnicastAddress:networkPdu.destination]) {
             // No need to send messages targetting local Unicast Addresses.
-            TeLogError(@"No need to send messages targetting local Unicast Addresses.");
+//            TeLogError(@"No need to send messages targetting local Unicast Addresses.");
             return;
         }
         [SigBearer.share sendBlePdu:networkPdu ofType:type];
@@ -231,7 +237,7 @@
     }
     if (self.lastNeedSendAckMessage) {
         //发包过程中收到segment的结束包，优先把当前包发送完成，再发送ack包。
-        TeLogDebug(@"==========灵活处理中间的ack数据包。")
+        //TeLogDebug(@"==========灵活处理中间的ack数据包。")
         SigNodeModel *provisionerNode = SigMeshLib.share.dataSource.curLocationNodeModel;
         UInt8 ttl = provisionerNode.defaultTTL;
         if (ttl < 2) {
@@ -245,12 +251,12 @@
     if (type == SigPduType_networkPdu && networkTransmit != nil && networkTransmit.networkTransmitCount > 1 && !SigBearer.share.isProvisioned) {
         self.networkTransmitCount = networkTransmit.networkTransmitCount;
         __block NSInteger count = networkTransmit.networkTransmitCount;
-        __weak typeof(self) weakSelf = self;
+//        __weak typeof(self) weakSelf = self;
         BackgroundTimer *timer = [BackgroundTimer scheduledTimerWithTimeInterval:networkTransmit.networkTransmitIntervalSteps repeats:YES block:^(BackgroundTimer * _Nonnull t) {
             [SigBearer.share sendBlePdu:networkPdu ofType:type];
             count -= 1;
             if (count == 0) {
-                [weakSelf.networkTransmitTimers removeObject:t];
+                [self.networkTransmitTimers removeObject:t];
                 if (t) {
                     [t invalidate];
                 }
@@ -275,7 +281,7 @@
     UInt16 source = _meshNetwork.curLocationNodeModel.address != 0 ? _meshNetwork.curLocationNodeModel.address : MeshAddress_maxUnicastAddress;
     SigControlMessage *pdu = [[SigControlMessage alloc] initFromProxyConfigurationMessage:message sentFromSource:source usingNetworkKey:networkKey];
     pdu.ivIndex = SigMeshLib.share.dataSource.curNetkeyModel.ivIndex;
-    TeLogInfo(@"Sending %@%@ from: 0x%x to: 0000,ivIndex=0x%x",message,message.parameters,source,pdu.ivIndex.index);
+//    TeLogInfo(@"Sending %@%@ from: 0x%x to: 0000,ivIndex=0x%x",message,message.parameters,source,pdu.ivIndex.index);
     [self sendLowerTransportPdu:pdu ofType:SigPduType_proxyConfiguration withTtl:0];
     [_networkManager notifyAboutDeliveringMessage:(SigMeshMessage *)message fromLocalElement:SigMeshLib.share.dataSource.curLocationNodeModel.elements.firstObject toDestination:pdu.destination];
 }
@@ -289,7 +295,7 @@
 - (void)handleMeshPrivateBeacon:(SigMeshPrivateBeacon *)meshPrivateBeacon {
     SigNetkeyModel *networkKey = meshPrivateBeacon.networkKey;
     if (meshPrivateBeacon.ivIndex < networkKey.ivIndex.index || ABS(meshPrivateBeacon.ivIndex-networkKey.ivIndex.index) > 42) {
-        TeLogError(@"Discarding mesh private beacon (ivIndex: 0x%x, expected >= 0x%x)",(unsigned int)meshPrivateBeacon.ivIndex,(unsigned int)networkKey.ivIndex.index);
+//        TeLogError(@"Discarding mesh private beacon (ivIndex: 0x%x, expected >= 0x%x)",(unsigned int)meshPrivateBeacon.ivIndex,(unsigned int)networkKey.ivIndex.index);
         if (SigMeshLib.share.dataSource.getCurrentProvisionerIntSequenceNumber >= 0xc00000) {
             SigMeshPrivateBeacon *beacon = [[SigMeshPrivateBeacon alloc] initWithKeyRefreshFlag:NO ivUpdateActive:YES ivIndex:networkKey.ivIndex.index+1 randomData:[LibTools createRandomDataWithLength:13] usingNetworkKey:networkKey];
             SigMeshLib.share.meshPrivateBeacon = beacon;
@@ -305,7 +311,7 @@
     SigMeshLib.share.meshPrivateBeacon = meshPrivateBeacon;
     SigIvIndex *ivIndex = [[SigIvIndex alloc] initWithIndex:meshPrivateBeacon.ivIndex updateActive:meshPrivateBeacon.ivUpdateActive];
     networkKey.ivIndex = ivIndex;
-    TeLogVerbose(@"receive mesh private Beacon, ivIndex=0x%x,updateActive=%d",ivIndex.index,ivIndex.updateActive);
+//    TeLogVerbose(@"receive mesh private Beacon, ivIndex=0x%x,updateActive=%d",ivIndex.index,ivIndex.updateActive);
 
     // If the Key Refresh Procedure is in progress, and the new Network Key
     // has already been set, the key erfresh flag indicates switching to phase 2.
@@ -348,7 +354,7 @@
 - (void)handleSecureNetworkBeacon:(SigSecureNetworkBeacon *)secureNetworkBeacon {
     SigNetkeyModel *networkKey = secureNetworkBeacon.networkKey;
     if (secureNetworkBeacon.ivIndex < networkKey.ivIndex.index || ABS(secureNetworkBeacon.ivIndex-networkKey.ivIndex.index) > 42) {
-        TeLogError(@"Discarding secure network beacon (ivIndex: 0x%x, expected >= 0x%x)",(unsigned int)secureNetworkBeacon.ivIndex,(unsigned int)networkKey.ivIndex.index);
+//        TeLogError(@"Discarding secure network beacon (ivIndex: 0x%x, expected >= 0x%x)",(unsigned int)secureNetworkBeacon.ivIndex,(unsigned int)networkKey.ivIndex.index);
         if (SigMeshLib.share.dataSource.getCurrentProvisionerIntSequenceNumber >= 0xc00000) {
             SigSecureNetworkBeacon *beacon = [[SigSecureNetworkBeacon alloc] initWithKeyRefreshFlag:NO ivUpdateActive:YES networkId:networkKey.networkId ivIndex:networkKey.ivIndex.index+1 usingNetworkKey:networkKey];
             SigMeshLib.share.secureNetworkBeacon = beacon;
@@ -364,7 +370,7 @@
     SigMeshLib.share.secureNetworkBeacon = secureNetworkBeacon;
     SigIvIndex *ivIndex = [[SigIvIndex alloc] initWithIndex:secureNetworkBeacon.ivIndex updateActive:secureNetworkBeacon.ivUpdateActive];
     networkKey.ivIndex = ivIndex;
-    TeLogVerbose(@"receive secure Network Beacon, ivIndex=0x%x,updateActive=%d",ivIndex.index,ivIndex.updateActive);
+//    TeLogVerbose(@"receive secure Network Beacon, ivIndex=0x%x,updateActive=%d",ivIndex.index,ivIndex.updateActive);
 
     // If the Key Refresh Procedure is in progress, and the new Network Key
     // has already been set, the key erfresh flag indicates switching to phase 2.
@@ -412,12 +418,12 @@
 - (void)handleSigProxyConfigurationPdu:(SigNetworkPdu *)proxyPdu {
     NSData *payload = proxyPdu.transportPdu;
     if (payload.length <= 1) {
-        TeLogError(@"payload.length <= 1");
+        //TeLogError(@"payload.length <= 1");
         return;
     }
     SigControlMessage *controlMessage = [[SigControlMessage alloc] initFromNetworkPdu:proxyPdu];
     if (controlMessage == nil) {
-        TeLogError(@"controlMessage == nil");
+        //TeLogError(@"controlMessage == nil");
         return;
     }
 //    TeLogInfo(@"%@ receieved (decrypted using key: %@)",controlMessage,controlMessage.networkKey);
@@ -432,7 +438,7 @@
             [_networkManager.manager.delegateForDeveloper didReceiveSigProxyConfigurationMessage:message sentFromSource:proxyPdu.source toDestination:proxyPdu.destination];
         }
     }else{
-        TeLogInfo(@"Unsupported proxy configuration message (opcode: 0x%x)",controlMessage.opCode);
+//        TeLogInfo(@"Unsupported proxy configuration message (opcode: 0x%x)",controlMessage.opCode);
     }
 }
 

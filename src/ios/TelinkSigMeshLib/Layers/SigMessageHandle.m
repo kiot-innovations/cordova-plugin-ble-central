@@ -22,6 +22,10 @@
  *******************************************************************************************************/
 
 #import "SigMessageHandle.h"
+#import "SigMeshMessage.h"
+#import "SDKLibCommand.h"
+#import "SigMeshLib.h"
+
 
 @implementation SigMessageHandle
 

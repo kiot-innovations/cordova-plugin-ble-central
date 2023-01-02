@@ -39,10 +39,100 @@
         <header-file src="src/ios/BLEStreamContext.h" target-dir="BLECentralPlugin" />
         <source-file src="src/ios/BLEStreamContext.m" target-dir="BLECentralPlugin" />
 
+        <header-file src="src/ios/TelinkSigMeshLib/Bearer/SigBluetooth.h" target-dir="SigBluetooth.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Bearer/SigBluetooth.m" target-dir="SigBluetooth.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/TelinkSigMeshLib.h" target-dir="TelinkSigMeshLib.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SigConst.h" target-dir="SigConst.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SigConst.m" target-dir="SigConst.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SigLogger.h" target-dir="SigLogger.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SigLogger.m" target-dir="SigLogger.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/BackgroundTimer.h" target-dir="BackgroundTimer.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/BackgroundTimer.m" target-dir="BackgroundTimer.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SigDataSource.h" target-dir="SigDataSource.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SigDataSource.m" target-dir="SigDataSource.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SDKLibCommand.h" target-dir="SDKLibCommand.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SDKLibCommand.m" target-dir="SDKLibCommand.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SigHelper.h" target-dir="SigHelper.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SigHelper.m" target-dir="SigHelper.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/LibTools.h" target-dir="LibTools.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/LibTools.m" target-dir="LibTools.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/OTAManager.h" target-dir="OTAManager.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/OTAManager.m" target-dir="OTAManager.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SigPublishManager.h" target-dir="SigPublishManager.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/SigPublishManager.m" target-dir="SigPublishManager.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/TelinkHttpManager.h" target-dir="TelinkHttpManager.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/TelinkHttpManager.m" target-dir="TelinkHttpManager.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/MeshOTAManager.h" target-dir="MeshOTAManager.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/ConnectTools.h" target-dir="ConnectTools.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/ConnectTools.m" target-dir="ConnectTools.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/OpenSSLHelper.h" target-dir="OpenSSLHelper.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Utils/OpenSSLHelper.m" target-dir="OpenSSLHelper.m" />
+          <header-file src="src/ios/TelinkSigMeshLib/Layers/SigKeySet.h" target-dir="SigKeySet.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/SigKeySet.m" target-dir="SigKeySet.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Type Extensions/CBUUID+Hex.h" target-dir="CBUUID+Hex.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Type Extensions/CBUUID+Hex.m" target-dir="CBUUID+Hex.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/SigEnumeration.h" target-dir="SigEnumeration.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/SigStruct.h" target-dir="SigStruct.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Model/SigModel.h" target-dir="SigModel.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Model/SigModel.m" target-dir="SigModel.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Bearer/SigBearer.h" target-dir="SigBearer.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Bearer/SigBearer.m" target-dir="SigBearer.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Messages/SigConfigMessage.h" target-dir="SigConfigMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Messages/SigConfigMessage.m" target-dir="SigConfigMessage.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Messages/SigMeshMessage.h" target-dir="SigMeshMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Messages/SigMeshMessage.m" target-dir="SigMeshMessage.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/SigMeshLib.h" target-dir="SigMeshLib.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/SigMeshLib.m" target-dir="SigMeshLib.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/SigMessageHandle.h" target-dir="SigMessageHandle.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/SigMessageHandle.m" target-dir="SigMessageHandle.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Messages/Proxy Configuration/SigProxyConfigurationMessage.h" target-dir="SigProxyConfigurationMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Messages/Proxy Configuration/SigProxyConfigurationMessage.m" target-dir="SigProxyConfigurationMessage.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Messages/SigGenericMessage.h" target-dir="SigGenericMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Messages/SigGenericMessage.m" target-dir="SigGenericMessage.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Upper Transport Layer/SigHearbeatMessage.h" target-dir="SigHeartbeatMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Upper Transport Layer/SigHearbeatMessage.m" target-dir="SigHeartbeatMessage.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Add devices Module/SigFastProvisionAddManager.h" target-dir="SigFastProvisionAddManager.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Add devices Module/SigFastProvisionAddManager.m" target-dir="SigFastProvisionAddManager.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Add devices Module/SigRemoteAddManager.h" target-dir="SigRemoteAddManager.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Add devices Module/SigAddDeviceManager.h" target-dir="SigAddDeviceManager.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Add devices Module/SigAddDeviceManager.m" target-dir="SigAddDeviceManager.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Model/SigPdu.h" target-dir="SigPdu.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Mesh Model/SigPdu.m" target-dir="SigPdu.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/SigNetworkManager.h" target-dir="SigNetworkManager.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/SigNetworkManager.m" target-dir="SigNetworkManager.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Network Layer/SigNetworkLayer.h" target-dir="SigNetworkLayer.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Network Layer/SigNetworkLayer.m" target-dir="SigNetworkLayer.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigLowerTransportLayer.h" target-dir="SigLowerTransportLayer.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigLowerTransportLayer.m" target-dir="SigLowerTransportLayer.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Upper Transport Layer/SigUpperTransportLayer.h" target-dir="SigUpperTransportLayer.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Upper Transport Layer/SigUpperTransportLayer.m" target-dir="SigUpperTransportLayer.m" />
+         <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigLowerTransportPdu.h" target-dir="SigLowerTransportPdu.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigLowerTransportPdu.m" target-dir="SigLowerTransportPdu.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Upper Transport Layer/SigUpperTransportPdu.h" target-dir="SigUpperTransportPdu.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Upper Transport Layer/SigUpperTransportPdu.m" target-dir="SigUpperTransportPdu.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigAccessMessage.h" target-dir="SigAccessMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigAccessMessage.m" target-dir="SigAccessMessage.m" />
+         <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigControlMessage.h" target-dir="SigControlMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigControlMessage.m" target-dir="SigControlMessage.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Access Layer/SigAccessLayer.h" target-dir="SigAccessLayer.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Access Layer/SigAccessLayer.m" target-dir="SigAccessLayer.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Access Layer/SigAccessPdu.h" target-dir="SigAccessPdu.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Access Layer/SigAccessPdu.m" target-dir="SigAccessPdu.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigSegmentAcknowledgmentMessage.h" target-dir="SigSegmentAcknowledgmentMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigSegmentAcknowledgmentMessage.m" target-dir="SigSegmentAcknowledgmentMessage.m" />
+         <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigSegmentedMessage.h" target-dir="SigSegmentedMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigSegmentedMessage.m" target-dir="SigSegmentedMessage.m" />
+         <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigSegmentedAccessMessage.h" target-dir="SigSegmentedAccessMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigSegmentedAccessMessage.m" target-dir="SigSegmentedAccessMessage.m" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigSegmentedControlMessage.h" target-dir="SigSegmentedControlMessage.h" />
+        <header-file src="src/ios/TelinkSigMeshLib/Layers/Lower Transport Layer/SigSegmentedControlMessage.m" target-dir="SigSegmentedControlMessage.m" />
+
+
         <!-- frameworks -->
         <framework src="CoreBluetooth.framework" />
 
         <!-- iOS Permissions -->
+
         <preference name="BLUETOOTH_USAGE_DESCRIPTION" default=" " />
         <config-file target="*-Info.plist" parent="NSBluetoothPeripheralUsageDescription">
             <string>$BLUETOOTH_USAGE_DESCRIPTION</string>

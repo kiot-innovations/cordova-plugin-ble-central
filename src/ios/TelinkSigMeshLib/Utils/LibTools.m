@@ -22,7 +22,10 @@
  *******************************************************************************************************/
 
 #import "LibTools.h"
+#import "SigEnumeration.h"
+#import "SDKLibCommand.h"
 #import <CommonCrypto/CommonCryptor.h>
+
 
 @implementation LibTools
 
@@ -195,7 +198,7 @@
     NSData *data = [NSData dataWithBytes:key length:length];
 //    TeLogInfo(@"createRandomData:%@",data);
     if (data.length == 0) {
-        TeLogInfo(@"ERROE : createRandomData fail");
+        //TeLogInfo(@"ERROE : createRandomData fail");
     }
     return data;
 }

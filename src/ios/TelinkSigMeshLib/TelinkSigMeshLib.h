@@ -48,34 +48,37 @@ FOUNDATION_EXPORT const unsigned char TelinkSigMeshLibVersionString[];
 #define kExistRemoteProvision   (NO)
 /*是否存在CertificateBasedProvision功能*/
 #define kExistCertificateBasedProvision   (NO)
-#import <TelinkSigMeshLib/SigConst.h>
-#import <TelinkSigMeshLib/SigEnumeration.h>
-#import <TelinkSigMeshLib/SigStruct.h>
-#import <TelinkSigMeshLib/SigLogger.h>
-#import <TelinkSigMeshLib/SigModel.h>
-#import <TelinkSigMeshLib/BackgroundTimer.h>
-#import <TelinkSigMeshLib/SigBearer.h>
-#import <TelinkSigMeshLib/SigDataSource.h>
-#import <TelinkSigMeshLib/SDKLibCommand.h>
-#import <TelinkSigMeshLib/SigConfigMessage.h>
-#import <TelinkSigMeshLib/SigMeshMessage.h>
-#import <TelinkSigMeshLib/SigMeshLib.h>
-#import <TelinkSigMeshLib/SigHelper.h>
-#import <TelinkSigMeshLib/SigMessageHandle.h>
-#import <TelinkSigMeshLib/SigProxyConfigurationMessage.h>
-#import <TelinkSigMeshLib/LibTools.h>
-#import <TelinkSigMeshLib/SigGenericMessage.h>
-#import <TelinkSigMeshLib/SigHearbeatMessage.h>
-#import <TelinkSigMeshLib/OTAManager.h>
-#import <TelinkSigMeshLib/SigPublishManager.h>
-#import <TelinkSigMeshLib/TelinkHttpManager.h>
-#import <TelinkSigMeshLib/SigFastProvisionAddManager.h>
-#import <TelinkSigMeshLib/MeshOTAManager.h>
-#import <TelinkSigMeshLib/SigRemoteAddManager.h>
-#import <TelinkSigMeshLib/SigBluetooth.h>
-#import <TelinkSigMeshLib/SigAddDeviceManager.h>
-#import <TelinkSigMeshLib/SigPdu.h>
-#import <TelinkSigMeshLib/ConnectTools.h>
+#import "SigConst.h"
+#import "SigEnumeration.h"
+#import "SigStruct.h"
+#import "SigLogger.h"
+#import "SigModel.h"
+#import "BackgroundTimer.h"
+#import "SigBearer.h"
+#import "SigDataSource.h"
+#import "SDKLibCommand.h"
+#import "SigConfigMessage.h"
+#import "SigMeshMessage.h"
+#import "SigMeshLib.h"
+#import "SigHelper.h"
+#import "SigMessageHandle.h"
+#import "SigProxyConfigurationMessage.h"
+#import "LibTools.h"
+#import "SigGenericMessage.h"
+#import "SigHearbeatMessage.h"
+#import "OTAManager.h"
+#import "SigPublishManager.h"
+#import "TelinkHttpManager.h"
+#import "SigFastProvisionAddManager.h"
+#import "MeshOTAManager.h"
+#import "SigRemoteAddManager.h"
+#import "SigBluetooth.h"
+#import "SigAddDeviceManager.h"
+#import "SigPdu.h"
+#import "ConnectTools.h"
+#import "SigLowerTransportLayer.h"
+#import "SigNetworkManager.h"
+
 
 #else
 

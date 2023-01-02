@@ -22,8 +22,11 @@
  *******************************************************************************************************/
 
 #import <Foundation/Foundation.h>
+#import "SigEnumeration.h"
 
 NS_ASSUME_NONNULL_BEGIN
+
+@class SigTransitionTime;
 
 @interface SigBaseMeshMessage : NSObject
 

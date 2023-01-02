@@ -22,6 +22,9 @@
  *******************************************************************************************************/
 
 #import <Foundation/Foundation.h>
+#import "SigEnumeration.h"
+
+@class SigNetworkPdu,SigNetkeyModel,SigIvIndex;
 
 NS_ASSUME_NONNULL_BEGIN
 

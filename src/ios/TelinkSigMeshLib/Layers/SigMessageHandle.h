@@ -23,6 +23,8 @@
 
 #import <Foundation/Foundation.h>
 
+@class SigMeshLib,SDKLibCommand;
+
 NS_ASSUME_NONNULL_BEGIN
 
 /// The mesh message handle is returned upon sending a mesh message

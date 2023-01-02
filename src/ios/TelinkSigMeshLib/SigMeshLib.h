@@ -22,10 +22,11 @@
  *******************************************************************************************************/
 
 #import <Foundation/Foundation.h>
+#import "SigDataSource.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigMessageHandle, SigMeshAddress, SigProxyConfigurationMessage, SDKLibCommand, SigSecureNetworkBeacon, SigNetworkPdu, SigMeshPrivateBeacon, BackgroundTimer;
+@class SigMessageHandle, SigMeshAddress, SigProxyConfigurationMessage, SDKLibCommand, SigSecureNetworkBeacon, SigNetworkPdu, SigMeshPrivateBeacon, BackgroundTimer, SigBearer,SigConfigMessage,SigElementModel,SigMeshMessage;
 
 @protocol SigMessageDelegate <NSObject>
 @optional

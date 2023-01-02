@@ -22,10 +22,11 @@
  *******************************************************************************************************/
 
 #import <Foundation/Foundation.h>
+#import "SigEnumeration.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigBearer,SigPdu;
+@class SigBearer,SigPdu,CBPeripheral,CBCharacteristic;
 
 
 typedef void(^bearerOperationResultCallback)(BOOL successful);
@@ -100,8 +101,8 @@ typedef void(^SendPacketsFinishCallback)(void);
 
 - (void)connectAndReadServicesWithPeripheral:(CBPeripheral *)peripheral result:(bearerOperationResultCallback)result;
 
-- (void)sentPcakets:(NSArray <NSData *>*)packets toCharacteristic:(CBCharacteristic *)characteristic type:(CBCharacteristicWriteType)type complete:(SendPacketsFinishCallback)complete;
-- (void)sentPcakets:(NSArray <NSData *>*)packets toCharacteristic:(CBCharacteristic *)characteristic type:(CBCharacteristicWriteType)type;
+- (void)sentPcakets:(NSArray <NSData *>*)packets toCharacteristic:(CBCharacteristic *)characteristic  complete:(SendPacketsFinishCallback)complete;
+- (void)sentPcakets:(NSArray <NSData *>*)packets toCharacteristic:(CBCharacteristic *)characteristic ;
 
 - (void)sendBlePdu:(SigPdu *)pdu ofType:(SigPduType)type;
 

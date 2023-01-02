@@ -31,7 +31,7 @@
         _opCode = message.opCode;
         NSData *data = message.upperTransportPdu;
         if (_opCode != 0x0A || data.length != 3) {
-            TeLogError(@"SigHearbeatMessage initFromControlMessage fail.");
+            //TeLogError(@"SigHearbeatMessage initFromControlMessage fail.");
             return nil;
         }
         Byte *dataByte = (Byte *)data.bytes;

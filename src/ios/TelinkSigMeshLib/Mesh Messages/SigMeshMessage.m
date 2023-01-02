@@ -22,6 +22,8 @@
  *******************************************************************************************************/
 
 #import "SigMeshMessage.h"
+#import "SigMeshLib.h"
+#import "SigHelper.h"
 
 @implementation SigBaseMeshMessage
 @end
@@ -98,9 +100,9 @@
 
 - (void)showMeshMessageSecurity:(SigMeshMessageSecurity)meshMessageSecurity {
     if (meshMessageSecurity == SigMeshMessageSecurityLow) {
-        TeLogInfo(@"Low (32-bit TransMIC)");
+        //TeLogInfo(@"Low (32-bit TransMIC)");
     } else {
-        TeLogInfo(@"High (64-bit TransMIC)");
+        //TeLogInfo(@"High (64-bit TransMIC)");
     }
 }
 

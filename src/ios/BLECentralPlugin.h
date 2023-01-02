@@ -24,6 +24,7 @@
 #import "BLECommandContext.h"
 #import "BLEStreamContext.h"
 #import "CBPeripheral+Extensions.h"
+#import "TelinkSigMeshLib.h"
 
 @interface BLECentralPlugin : CDVPlugin <CBCentralManagerDelegate, CBPeripheralDelegate> {
     NSString* discoverPeripheralCallbackId;

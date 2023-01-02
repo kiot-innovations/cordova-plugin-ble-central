@@ -25,7 +25,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigSegmentedMessage,SigUpperTransportPdu,SigNetkeyModel,SigSegmentAcknowledgmentMessage;
+@class SigSegmentedMessage,SigUpperTransportPdu,SigNetkeyModel,SigSegmentAcknowledgmentMessage,SigNetworkManager,BackgroundTimer,SigNetworkPdu,SigIvIndex,SigLowerTransportPdu;
 
 @interface SigLowerTransportLayer : NSObject
 

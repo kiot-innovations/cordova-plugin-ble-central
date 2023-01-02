@@ -31,6 +31,13 @@
 #import "SigLowerTransportLayer.h"
 #import "SigMeshLib.h"
 #import "SigAccessPdu.h"
+#import "SDKLibCommand.h"
+#import "SigNetworkManager.h"
+#import "SigModel.h"
+#import "SigConst.h"
+#import "SigMessageHandle.h"
+
+//@class SigMeshAddress;
 
 @interface SigUpperTransportModel : NSObject
 @property (nonatomic,strong) SigUpperTransportPdu *pdu;
@@ -77,7 +84,7 @@
 //                    TeLogInfo(@"%@ received",upperTransportPdu);
                     [_networkManager.accessLayer handleUpperTransportPdu:upperTransportPdu sentWithSigKeySet:keySet];
                 }else{
-                    TeLogError(@"Failed to decode PDU");
+                    //TeLogError(@"Failed to decode PDU");
                 }
             }
             break;
@@ -89,14 +96,14 @@
                     {
                         SigHearbeatMessage *heartbeat = [[SigHearbeatMessage alloc] initFromControlMessage:controlMessage];
                         if (heartbeat) {
-                            TeLogInfo(@"%@ received",heartbeat);
+                            //TeLogInfo(@"%@ received",heartbeat);
                             [self handleHearbeat:heartbeat];
                         }
                     }
                     break;
                     
                 default:
-                    TeLogInfo(@"Unsupported Control Message received (opCode: 0x%x)",controlMessage.opCode);
+                    //TeLogInfo(@"Unsupported Control Message received (opCode: 0x%x)",controlMessage.opCode);
                     // Other Control Messages are not supported.
                     break;
             }
@@ -119,12 +126,12 @@
         isSegmented = pdu.transportPdu.length > kUnsegmentedMessageLowerTransportPDUMaxLength || accessPdu.isSegmented || SigMeshLib.share.dataSource.security;
     }
     if (isSegmented) {
-        TeLogInfo(@"sending segment pdu.");
+       // TeLogInfo(@"sending segment pdu.");
         // Enqueue the PDU. If the queue was empty, the PDU will be sent
         // immediately.
         [self enqueueSigUpperTransportPdu:pdu initialTtl:initialTtl networkKey:networkKey ivIndex:command.curIvIndex];
     } else {
-        TeLogInfo(@"sending unsegment pdu.");
+       // TeLogInfo(@"sending unsegment pdu.");
         [_networkManager.lowerTransportLayer sendUnsegmentedUpperTransportPdu:pdu withTtl:initialTtl usingNetworkKey:networkKey ivIndex:command.curIvIndex];
     }
 }
@@ -140,11 +147,11 @@
     }
     SigUpperTransportModel *model = array.firstObject;
     if (model == nil) {
-        TeLogDebug(@"model == nil");
+        //TeLogDebug(@"model == nil");
         return;
     }
     if (model.pdu.message.opCode == handle.opCode && model.pdu.source == handle.source) {
-        TeLogInfo(@"Cancelling sending %@",model.pdu);
+        //TeLogInfo(@"Cancelling sending %@",model.pdu);
         [_networkManager.lowerTransportLayer cancelSendingSegmentedUpperTransportPdu:model.pdu];
         shouldSendNext = YES;
     }
@@ -166,12 +173,12 @@
 
 - (void)lowerTransportLayerDidSendSegmentedUpperTransportPduToDestination:(UInt16)destination {
     if (_queues == nil || _queues.count == 0 || _queues[@(destination)] == nil) {
-        TeLogDebug(@"_queues[destination] is empty.");
+       // TeLogDebug(@"_queues[destination] is empty.");
         return;
     }
     NSMutableArray *tem = [NSMutableArray arrayWithArray:_queues[@(destination)]];
     if (tem.count == 0) {
-        TeLogDebug(@"_queues[destination] is empty.");
+       // TeLogDebug(@"_queues[destination] is empty.");
         return;
     }
     
@@ -203,7 +210,7 @@
     if (_queues[@(pdu.destination)].count == 1) {
         [self sendNextToDestination:pdu.destination];
     }else{
-        TeLogWarn(@"异常逻辑，待完善。_queues[@(pdu.destination)]=%@",_queues[@(pdu.destination)]);
+//        TeLogWarn(@"异常逻辑，待完善。_queues[@(pdu.destination)]=%@",_queues[@(pdu.destination)]);
     }
 }
 
@@ -230,7 +237,7 @@
     if (array.count == 1) {
         [self sendNextToDestination:pdu.destination];
     }else{
-        TeLogWarn(@"==========异常逻辑，待完善。_queues[@(pdu.destination)]=%@",array);
+//        TeLogWarn(@"==========异常逻辑，待完善。_queues[@(pdu.destination)]=%@",array);
     }
 }
 

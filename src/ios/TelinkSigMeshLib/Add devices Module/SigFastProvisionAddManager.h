@@ -22,6 +22,8 @@
  *******************************************************************************************************/
 
 #import <Foundation/Foundation.h>
+#import "SigModel.h"
+#import "SDKLibCommand.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

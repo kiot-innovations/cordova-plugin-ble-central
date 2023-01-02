@@ -22,6 +22,7 @@
  *******************************************************************************************************/
 
 #import "TelinkHttpManager.h"
+#import "LibTools.h"
 #import <CommonCrypto/CommonDigest.h>
 
 #define RequestTypeGet      @"GET"
@@ -33,6 +34,7 @@
 #define BaseUrl @"http://47.115.40.63:8080/"
 
 #define CustomErrorDomain @"cn.telink.httpRequest"
+
 
 typedef void (^TelinkHttpBlock) (TelinkHttpRequest * _Nonnull request,id _Nullable result, NSError * _Nullable err);
 
@@ -72,10 +74,10 @@ typedef void (^TelinkHttpBlock) (TelinkHttpRequest * _Nonnull request,id _Nullab
         }
         [request setHTTPBody:[bodyStr dataUsingEncoding:NSUTF8StringEncoding]];
     }
-    __weak typeof(self) weakSelf = self;
+    //__weak typeof(self) weakSelf = self;
     NSURLSessionTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         if (error) {
-            if (weakSelf.httpBlock) weakSelf.httpBlock(weakSelf, nil, error);
+            if (self.httpBlock) self.httpBlock(self, nil, error);
         }else{
             NSHTTPURLResponse *r = (NSHTTPURLResponse*)response;
             NSLog(@"%ld %@", (long)[r statusCode], [NSHTTPURLResponse localizedStringForStatusCode:[r statusCode]]);
@@ -84,13 +86,13 @@ typedef void (^TelinkHttpBlock) (TelinkHttpRequest * _Nonnull request,id _Nullab
                 NSDictionary *result = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
                 if (result.count>0) {
                     NSError *err = [NSError errorWithDomain:BaseUrl code:[[result objectForKey:@"status"] integerValue] userInfo:@{NSLocalizedDescriptionKey : [result objectForKey:@"message"]}];
-                    if (weakSelf.httpBlock) {
-                        weakSelf.httpBlock(weakSelf, nil, err);
+                    if (self.httpBlock) {
+                        self.httpBlock(self, nil, err);
                     }
                 }else{
                     NSError *err = [NSError errorWithDomain:BaseUrl code:99999 userInfo:@{NSLocalizedDescriptionKey : @"服务器异常，请稍后···"}];
-                    if (weakSelf.httpBlock) {
-                        weakSelf.httpBlock(weakSelf, nil, err);
+                    if (self.httpBlock) {
+                        self.httpBlock(self, nil, err);
                     }
                 }
             }else{
@@ -100,12 +102,12 @@ typedef void (^TelinkHttpBlock) (TelinkHttpRequest * _Nonnull request,id _Nullab
                     result = [NSJSONSerialization JSONObjectWithData:data options:0 error:&err];
                 }
                 if (err) {
-                    if (weakSelf.httpBlock) {
-                        weakSelf.httpBlock(weakSelf, nil, err);
+                    if (self.httpBlock) {
+                        self.httpBlock(self, nil, err);
                     }
                 }else{
-                    if (weakSelf.httpBlock) {
-                        weakSelf.httpBlock(weakSelf, result, nil);
+                    if (self.httpBlock) {
+                        self.httpBlock(self, result, nil);
                     }
                 }
             }
@@ -186,9 +188,9 @@ typedef void (^TelinkHttpBlock) (TelinkHttpRequest * _Nonnull request,id _Nullab
 /// @param timeout Upload data effective time
 /// @param block result callback
 - (void)uploadJsonDictionary:(NSDictionary *)jsonDict timeout:(NSInteger)timeout didLoadData:(MyBlock)block {
-    __weak typeof(self) weakSelf = self;
+    //__weak typeof(self) weakSelf = self;
     TelinkHttpRequest *request = [TelinkHttpRequest uploadJsonDictionary:jsonDict timeout:timeout didLoadData:^(TelinkHttpRequest * _Nonnull request, id  _Nullable result, NSError * _Nullable err) {
-        [weakSelf.telinkHttpRequests removeObject:request];
+        [self.telinkHttpRequests removeObject:request];
         if (block) {
             block(result,err);
         }
@@ -200,9 +202,9 @@ typedef void (^TelinkHttpBlock) (TelinkHttpRequest * _Nonnull request,id _Nullab
 /// @param uuid identify of json dictionary
 /// @param block result callback
 - (void)downloadJsonDictionaryWithUUID:(NSString *)uuid didLoadData:(MyBlock)block {
-    __weak typeof(self) weakSelf = self;
+    //__weak typeof(self) weakSelf = self;
     TelinkHttpRequest *request = [TelinkHttpRequest downloadJsonDictionaryWithUUID:uuid didLoadData:^(TelinkHttpRequest * _Nonnull request, id  _Nullable result, NSError * _Nullable err) {
-        [weakSelf.telinkHttpRequests removeObject:request];
+        [self.telinkHttpRequests removeObject:request];
         if (block) {
             block(result,err);
         }
@@ -215,9 +217,9 @@ typedef void (^TelinkHttpBlock) (TelinkHttpRequest * _Nonnull request,id _Nullab
 /// @param updateURI update URI from the response of firmwareUpdateInformationGet
 /// @param block result callback
 - (void)firmwareCheckRequestWithFirewareIDString:(NSString *)firewareIDString updateURI:(NSString *)updateURI didLoadData:(MyBlock)block {
-    __weak typeof(self) weakSelf = self;
+    //__weak typeof(self) weakSelf = self;
     TelinkHttpRequest *request = [TelinkHttpRequest firmwareCheckRequestWithFirewareIDString:firewareIDString updateURI:updateURI didLoadData:^(TelinkHttpRequest * _Nonnull request, id  _Nullable result, NSError * _Nullable err) {
-        [weakSelf.telinkHttpRequests removeObject:request];
+        [self.telinkHttpRequests removeObject:request];
         if (block) {
             block(result,err);
         }
@@ -230,9 +232,9 @@ typedef void (^TelinkHttpBlock) (TelinkHttpRequest * _Nonnull request,id _Nullab
 /// @param updateURI update URI from the response of firmwareUpdateInformationGet
 /// @param block result callback
 - (void)firmwareGetRequestWithFirewareIDString:(NSString *)firewareIDString updateURI:(NSString *)updateURI didLoadData:(MyBlock)block {
-    __weak typeof(self) weakSelf = self;
+    //__weak typeof(self) weakSelf = self;
     TelinkHttpRequest *request = [TelinkHttpRequest firmwareGetRequestWithFirewareIDString:firewareIDString updateURI:updateURI didLoadData:^(TelinkHttpRequest * _Nonnull request, id  _Nullable result, NSError * _Nullable err) {
-        [weakSelf.telinkHttpRequests removeObject:request];
+        [self.telinkHttpRequests removeObject:request];
         if (block) {
             block(result,err);
         }

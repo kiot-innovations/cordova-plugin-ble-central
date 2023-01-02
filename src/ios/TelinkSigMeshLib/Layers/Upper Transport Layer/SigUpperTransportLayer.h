@@ -25,7 +25,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigLowerTransportPdu,SigHearbeatMessage,SigNetworkManager,SigAccessPdu;
+@class SigLowerTransportPdu,SigHearbeatMessage,SigNetworkManager,SigAccessPdu,SigUpperTransportPdu,SigKeySet,SDKLibCommand,SigMessageHandle;
 
 @interface SigUpperTransportLayer : NSObject
 

@@ -25,7 +25,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigSegmentedAccessMessage,SigNetworkPdu;
+@class SigSegmentedAccessMessage,SigNetworkPdu,SigProxyConfigurationMessage;
 
 @interface SigControlMessage : SigLowerTransportPdu
 

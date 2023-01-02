@@ -22,10 +22,12 @@
  *******************************************************************************************************/
 
 #import <Foundation/Foundation.h>
+#import "SigEnumeration.h"
+#import "SigProxyConfigurationMessage.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigLowerTransportPdu,SigNetworkManager,SigSegmentAcknowledgmentMessage;
+@class SigLowerTransportPdu,SigNetworkManager,SigSegmentAcknowledgmentMessage,SigDataSource,SigIvIndex,SigNetkeyModel;
 
 @interface SigNetworkLayer : NSObject
 @property (nonatomic,strong) SigNetworkManager *networkManager;

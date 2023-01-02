@@ -18,6 +18,7 @@
 
 #import "BLECentralPlugin.h"
 #import <Cordova/CDV.h>
+#import "SigBluetooth.h"
 
 @interface BLECentralPlugin() {
     NSDictionary *bluetoothStates;
@@ -280,7 +281,7 @@
             CBCharacteristic *characteristic = [context characteristic];
 
             int count = 0;
-            int dataLen = (int) message.length;
+            int dataLen = (int) [message length];
             if(dataLen>20){
                 do{
                     [peripheral writeValue:[message subdataWithRange:NSMakeRange(count, dataLen-count<20?dataLen-count:20)] forCharacteristic:characteristic type:CBCharacteristicWriteWithoutResponse];
@@ -643,6 +644,45 @@
         [context write:message callbackId:[command.callbackId copy]];
     }
 }
+
+#pragma mark - ble mesh
+
+- (void) mesh_initialize:(CDVInvokedUrlCommand *)command {
+    NSLog(@"mesh init");
+    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:command.callbackId];
+
+}
+
+- (void) mesh_provScanDevices:(CDVInvokedUrlCommand *)command {
+    NSLog(@"mesh start scan");
+//    __weak typeof(self) weakSelf = self;
+    [SigBluetooth.share scanUnprovisionedDevicesWithResult:^(CBPeripheral * _Nonnull peripheral, NSDictionary<NSString *,id> * _Nonnull advertisementData, NSNumber * _Nonnull RSSI, BOOL unprovisioned) {
+        //![weakSelf.tempProvisionFailList containsObject:peripheral.identifier.UUIDString] - taken from if condition
+        if (unprovisioned) {
+            SigScanRspModel *model = [SigMeshLib.share.dataSource getScanRspModelWithUUID:peripheral.identifier.UUIDString];
+#if SUPPORTCARTIFICATEBASED
+#else
+            if (model.advOobInformation.supportForCertificateBasedProvisioning) {
+                return;
+            }
+#endif
+            // [SigBluetooth.share stopScan];
+            SigOOBModel *oobModel = [SigMeshLib.share.dataSource getSigOOBModelWithUUID:model.advUuid];
+            if (oobModel && oobModel.OOBString && oobModel.OOBString.length == 32) {
+//                self.staticOOBData = [LibTools nsstringToHex:oobModel.OOBString];
+            }
+//            self.isCertificateBasedProvision = model.advOobInformation.supportForCertificateBasedProvisioning;
+            // [weakSelf startAddPeripheral:peripheral];
+        }
+    }];
+//    dispatch_async(dispatch_get_main_queue(), ^{
+//        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(scanTimeout) object:nil];
+//        [self performSelector:@selector(scanTimeout) withObject:nil afterDelay:kScanUnprovisionDeviceTimeout];
+//    });
+
+}
+
+
 
 #pragma mark - timers
 

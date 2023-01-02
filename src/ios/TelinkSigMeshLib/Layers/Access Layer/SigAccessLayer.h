@@ -25,7 +25,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigNetworkManager,SigUpperTransportPdu,SigAccessPdu;
+@class SigNetworkManager,SigUpperTransportPdu,SigAccessPdu,SigAppkeyModel,SigMeshMessage,SigConfigMessage,SigMeshAddress,SDKLibCommand,SigMessageHandle,SigAcknowledgedMeshMessage,SigElementModel;
 
 @interface SigAccessLayer : NSObject
 @property (nonatomic, strong) SigAccessPdu *accessPdu;

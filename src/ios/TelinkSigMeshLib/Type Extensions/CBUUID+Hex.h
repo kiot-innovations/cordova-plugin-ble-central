@@ -22,6 +22,8 @@
  *******************************************************************************************************/
 
 #import <Foundation/Foundation.h>
+#import <CoreBluetooth/CBUUID.h>
+
 
 NS_ASSUME_NONNULL_BEGIN
 

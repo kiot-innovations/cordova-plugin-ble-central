@@ -22,6 +22,7 @@
  *******************************************************************************************************/
 
 #import <Foundation/Foundation.h>
+#import "SigStruct.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

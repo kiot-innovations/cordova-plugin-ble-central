@@ -23,6 +23,8 @@
 
 #import "SigLowerTransportPdu.h"
 
+@class SigMeshMessage,SigElementModel;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface SigSegmentedMessage : SigLowerTransportPdu

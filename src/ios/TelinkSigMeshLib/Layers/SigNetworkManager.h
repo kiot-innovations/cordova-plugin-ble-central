@@ -28,7 +28,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigMeshLib,SigNodeModel,SigAppkeyModel,SigConfigMessage,SigNetworkLayer,SigLowerTransportLayer,SigUpperTransportLayer,SigAccessLayer,SigMessageHandle,SigKeySet,SigProxyConfigurationMessage;
+@class SigMeshLib,SigNodeModel,SigAppkeyModel,SigConfigMessage,SigNetworkLayer,SigLowerTransportLayer,SigUpperTransportLayer,SigAccessLayer,SigMessageHandle,SigKeySet,SigProxyConfigurationMessage,SigMeshAddress,SigElementModel,SDKLibCommand;
 
 @interface SigNetworkManager : NSObject
 @property (nonatomic,strong) SigMeshLib *manager;

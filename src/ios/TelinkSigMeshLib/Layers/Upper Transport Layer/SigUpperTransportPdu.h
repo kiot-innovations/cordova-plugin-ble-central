@@ -25,7 +25,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigAccessMessage,SigKeySet,SigAccessPdu;
+@class SigAccessMessage,SigKeySet,SigAccessPdu,SigMeshMessage,SigElementModel,SigGroupModel,SigIvIndex,SigDataSource;
 
 @interface SigUpperTransportPdu : NSObject
 

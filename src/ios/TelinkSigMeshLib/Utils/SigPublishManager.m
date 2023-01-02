@@ -22,6 +22,13 @@
  *******************************************************************************************************/
 
 #import "SigPublishManager.h"
+#import "BackgroundTimer.h"
+#import "SigModel.h"
+#import "SigMeshLib.h"
+
+
+@class SigPeriodModel;
+
 
 @interface SigPublishManager ()
 //Dictionary of timer that check node off line.
@@ -55,7 +62,7 @@
         if (device.hasPublishFunction && device.hasOpenPublish) {
             device.state = DeviceStateOutOfLine;
             NSString *str = [NSString stringWithFormat:@"======================device offline:0x%02X======================",adr];
-            TeLogInfo(@"%@",str);
+            //TeLogInfo(@"%@",str);
             if (self.discoverOutlineNodeCallback) {
                 self.discoverOutlineNodeCallback(@(device.address));
             }
@@ -67,9 +74,9 @@
     SigNodeModel *device = [SigMeshLib.share.dataSource getNodeWithAddress:address.intValue];
     if (device && device.hasPublishFunction && device.hasOpenPublish && device.hasPublishPeriod) {
         [self stopCheckOfflineTimerWithAddress:address];
-        __weak typeof(self) weakSelf = self;
+       // __weak typeof(self) weakSelf = self;
         BackgroundTimer *timer = [BackgroundTimer scheduledTimerWithTimeInterval:[self getIntervalWithSigPeriodModel:[device getModelIDModelWithModelID:device.publishModelID].publish.period]*3+1 repeats:NO block:^(BackgroundTimer * _Nonnull t) {
-            [weakSelf setDeviceOffline:address];
+            [self setDeviceOffline:address];
         }];
         _checkOfflineTimerDict[address] = timer;
     }

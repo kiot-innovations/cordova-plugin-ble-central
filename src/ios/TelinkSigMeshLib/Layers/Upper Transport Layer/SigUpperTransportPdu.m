@@ -26,6 +26,17 @@
 #import "OpenSSLHelper.h"
 #import "SigAccessPdu.h"
 #import "CBUUID+Hex.h"
+#import "SigModel.h"
+#import "SigMeshMessage.h"
+#import "SigKeySet.h"
+#import "SigPdu.h"
+#import "SigDataSource.h"
+#import "LibTools.h"
+#import "SigHelper.h"
+
+@class CBUUID;
+
+
 
 @implementation SigUpperTransportPdu
 
@@ -71,7 +82,7 @@
         NSData *decryptedData = [OpenSSLHelper.share calculateDecryptedCCM:encryptedData withKey:key nonce:nonce andMIC:mic withAdditionalData:additionalData];
         
         if (decryptedData == nil || decryptedData.length == 0) {
-            TeLogError(@"calculateDecryptedCCM fail.");
+           // TeLogError(@"calculateDecryptedCCM fail.");
             return nil;
         }else{
 //            TeLogDebug(@"calculateDecryptedCCM success.");
@@ -132,7 +143,7 @@
         NSData *decryptedData = [OpenSSLHelper.share calculateDecryptedCCM:encryptedData withKey:key nonce:nonce andMIC:mic withAdditionalData:additionalData];
         
         if (decryptedData == nil || decryptedData.length == 0) {
-            TeLogError(@"calculateDecryptedCCM fail.");
+            //TeLogError(@"calculateDecryptedCCM fail.");
             return nil;
         }else{
 //            TeLogDebug(@"calculateDecryptedCCM success.");
@@ -326,7 +337,7 @@
             return @{@"SigUpperTransportPdu":pdu,@"SigKeySet":keySet};
         }
     }
-    TeLogError(@"Decryption failed.");
+    //TeLogError(@"Decryption failed.");
     return nil;
 }
 

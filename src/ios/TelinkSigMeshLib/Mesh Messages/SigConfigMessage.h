@@ -25,7 +25,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigPublish,SigModelIDModel,SigNodeFeatures,SigConfigModelPublicationVirtualAddressSet;
+@class SigPublish,SigModelIDModel,SigNodeFeatures,SigAppkeyModel,SigConfigModelPublicationVirtualAddressSet,CBUUID,SigElementModel,SigNodeModel,SigNetkeyModel;
 
 @interface SigConfigMessage : SigStaticMeshMessage
 

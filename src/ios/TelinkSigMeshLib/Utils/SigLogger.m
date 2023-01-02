@@ -22,6 +22,8 @@
  *******************************************************************************************************/
 
 #import "SigLogger.h"
+#import "BackgroundTimer.h"
+#import "SigConst.h"
 #import <sys/time.h>
 #import <CommonCrypto/CommonCryptor.h>
 
@@ -32,6 +34,8 @@
 #else
 #define kTelinkSDKDebugLogDataSize ((double)1024*1024*20) //RELEASE默认日志最大存储大小为20M。每10*60秒检查一次日志文件大小。
 #endif
+
+//@class BackgroundTimer;
 
 @interface SigLogger ()
 @property (nonatomic, strong) BackgroundTimer *timer;
@@ -80,9 +84,9 @@
     _logLevel = logLevel;
     if (logLevel != SigLogLevelOff) {
         [self initLogFile];
-        __weak typeof(self) weakSelf = self;
+        //__weak typeof(self) weakSelf = self;
         _timer = [BackgroundTimer scheduledTimerWithTimeInterval:10 * 60 repeats:YES block:^(BackgroundTimer * _Nonnull t) {
-            [weakSelf checkSDKLogFileSize];
+            [self checkSDKLogFileSize];
         }];
         [self checkSDKLogFileSize];
         [self enableLogger];

@@ -22,8 +22,9 @@
  *******************************************************************************************************/
 
 #import <Foundation/Foundation.h>
+#import "SigEnumeration.h"
 
-@class SigNetkeyModel,SigProvisionerModel,SigAppkeyModel,SigSceneModel,SigGroupModel,SigNodeModel, SigIvIndex,SigExclusionModel,SigBaseMeshMessage;
+@class SigNetkeyModel,SigProvisionerModel,SigAppkeyModel,SigSceneModel,SigGroupModel,SigNodeModel,SigScanRspModel,DeviceTypeModel,SigOOBModel,SigPeriodModel, SigIvIndex,SigExclusionModel,SigBaseMeshMessage,SigRangeModel,SigEncryptedModel,ModelIDModel;
 
 @protocol SigDataSourceDelegate <NSObject>
 @optional

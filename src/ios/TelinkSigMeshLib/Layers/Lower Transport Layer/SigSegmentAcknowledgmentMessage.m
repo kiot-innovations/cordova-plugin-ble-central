@@ -23,6 +23,7 @@
 
 #import "SigSegmentAcknowledgmentMessage.h"
 #import "SigSegmentedMessage.h"
+#import "SigPdu.h"
 
 @implementation SigSegmentAcknowledgmentMessage
 
@@ -62,12 +63,12 @@
         UInt8 tem = 0;
         memcpy(&tem, dataByte, 1);
         if (data.length != 7 || (tem & 0x80) != 0) {
-            TeLogError(@"initFromUnsegmentedPdu fail.");
+           // TeLogError(@"initFromUnsegmentedPdu fail.");
             return nil;
         }
         _opCode = tem & 0x7F;
         if (_opCode != 0) {
-            TeLogError(@"initFromUnsegmentedPdu fail.");
+           // TeLogError(@"initFromUnsegmentedPdu fail.");
             return nil;
         }
         UInt8 tem1 = 0,tem2=0;

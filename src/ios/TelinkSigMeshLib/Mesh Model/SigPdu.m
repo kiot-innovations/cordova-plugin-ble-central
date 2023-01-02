@@ -25,6 +25,11 @@
 #import "OpenSSLHelper.h"
 #import "SigLowerTransportPdu.h"
 #import "OpenSSLHelper.h"
+#import "SigModel.h"
+#import "SigMeshLib.h"
+#import "LibTools.h"
+#import "SigDataSource.h"
+#import "SigStruct.h"
 
 //struct PublicKeyPdu {
 //    UInt8 type;
@@ -45,6 +50,8 @@
 //    UInt8 type;
 //    UInt8 encryptedDataWithMic[33];
 //};
+
+@class SigNetkeyDerivaties;
 
 @implementation SigPdu
 - (instancetype)init {
@@ -759,12 +766,12 @@
 - (instancetype)initWithDecodePduData:(NSData *)pdu pduType:(SigPduType)pduType usingNetworkKey:(SigNetkeyModel *)networkKey ivIndex:(SigIvIndex *)ivIndex {
     if (self = [super init]) {
         if (pduType != SigPduType_networkPdu && pduType != SigPduType_proxyConfiguration) {
-            TeLogError(@"pdutype is not support.");
+            //TeLogError(@"pdutype is not support.");
             return nil;
         }
         self.pduData = pdu;
         if (pdu.length < 14) {
-            TeLogDebug(@"Valid message must have at least 14 octets.");
+            //TeLogDebug(@"Valid message must have at least 14 octets.");
             return nil;
         }
         
@@ -838,7 +845,7 @@
             }
             NSData *decryptedData = [OpenSSLHelper.share calculateDecryptedCCM:destAndTransportPdu withKey:keys.encryptionKey nonce:networkNonce andMIC:mic withAdditionalData:nil];
             if (decryptedData == nil || decryptedData.length == 0) {
-                TeLogError(@"decryptedData == nil");
+                //TeLogError(@"decryptedData == nil");
                 continue;
             }
             
@@ -868,12 +875,12 @@
 - (instancetype)initWithDecodePduData:(NSData *)pdu pduType:(SigPduType)pduType usingNetworkKey:(SigNetkeyModel *)networkKey {
     if (self = [super init]) {
         if (pduType != SigPduType_networkPdu && pduType != SigPduType_proxyConfiguration) {
-            TeLogError(@"pdutype is not support.");
+            //TeLogError(@"pdutype is not support.");
             return nil;
         }
         self.pduData = pdu;
         if (pdu.length < 14) {
-            TeLogDebug(@"Valid message must have at least 14 octets.");
+            //TeLogDebug(@"Valid message must have at least 14 octets.");
             return nil;
         }
         
@@ -947,7 +954,7 @@
             }
             NSData *decryptedData = [OpenSSLHelper.share calculateDecryptedCCM:destAndTransportPdu withKey:keys.encryptionKey nonce:networkNonce andMIC:mic withAdditionalData:nil];
             if (decryptedData == nil || decryptedData.length == 0) {
-                TeLogError(@"decryptedData == nil");
+                //TeLogError(@"decryptedData == nil");
                 continue;
             }
             
@@ -1154,7 +1161,7 @@
             return 0x03;
             break;
         default:
-            TeLogError(@"Unsupported PDU Type:%lu",(unsigned long)pduType);
+            //TeLogError(@"Unsupported PDU Type:%lu",(unsigned long)pduType);
             break;
     }
     return 0;
@@ -1264,7 +1271,7 @@
         Byte *pduByte = (Byte *)pdu.bytes;
         memcpy(&tem, pduByte, 1);
         if (pdu.length != 22 || tem != 1) {
-            TeLogError(@"pdu data error, can not init decode.");
+            //TeLogError(@"pdu data error, can not init decode.");
             return nil;
         }
         memcpy(&tem, pduByte+1, 1);
@@ -1278,14 +1285,14 @@
         if ([_networkId isEqualToData:networkKey.networkId]) {
             NSData *authenticationValue = [OpenSSLHelper.share calculateCMAC:[pdu subdataWithRange:NSMakeRange(1, 13)] andKey:networkKey.keys.beaconKey];
             if (![[authenticationValue subdataWithRange:NSMakeRange(0, 8)] isEqualToData:[pdu subdataWithRange:NSMakeRange(14, 8)]]) {
-                TeLogError(@"authenticationValue is not current networkID.");
+                //TeLogError(@"authenticationValue is not current networkID.");
                 return nil;
             }
             _networkKey = networkKey;
         }else if (networkKey.oldNetworkId != nil && [networkKey.oldNetworkId isEqualToData:_networkId]) {
             NSData *authenticationValue = [OpenSSLHelper.share calculateCMAC:[pdu subdataWithRange:NSMakeRange(1, 13)] andKey:networkKey.oldKeys.beaconKey];
             if (![[authenticationValue subdataWithRange:NSMakeRange(0, 8)] isEqualToData:[pdu subdataWithRange:NSMakeRange(14, 8)]]) {
-                TeLogError(@"authenticationValue is not current old networkID.");
+                //TeLogError(@"authenticationValue is not current old networkID.");
                 return nil;
             }
             _networkKey = networkKey;
@@ -1315,7 +1322,7 @@
 /// - returns: The beacon object, or `nil` if the data are invalid.
 + (SigSecureNetworkBeacon *)decodePdu:(NSData *)pdu forMeshNetwork:(SigDataSource *)meshNetwork {
     if (pdu == nil || pdu.length <= 1) {
-        TeLogError(@"decodePdu length is less than 1.");
+        //TeLogError(@"decodePdu length is less than 1.");
         return nil;
     }
     UInt8 tem = 0;
@@ -1409,7 +1416,7 @@
 
 + (SigUnprovisionedDeviceBeacon *)decodeWithPdu:(NSData *)pdu forMeshNetwork:(SigDataSource *)meshNetwork {
     if (pdu == nil || pdu.length == 0) {
-        TeLogError(@"decodePdu length is 0.");
+        //TeLogError(@"decodePdu length is 0.");
         return nil;
     }
     UInt8 tem = 0;
@@ -1455,7 +1462,7 @@
         Byte *pduByte = (Byte *)pdu.bytes;
         memcpy(&tem, pduByte, 1);
         if (pdu.length != 27 || tem != SigBeaconType_meshPrivateBeacon) {
-            TeLogError(@"pdu data error, can not init decode.");
+            //TeLogError(@"pdu data error, can not init decode.");
             return nil;
         }
         _randomData = [pdu subdataWithRange:NSMakeRange(1, 13)];
@@ -1491,7 +1498,7 @@
             }
         }
         if (authentication == NO) {
-            TeLogError(@"Mesh Private beacon authentication fail.");
+            //TeLogError(@"Mesh Private beacon authentication fail.");
             return nil;
         }
     }
@@ -1518,7 +1525,7 @@
 /// - returns: The beacon object, or `nil` if the data are invalid.
 + (SigMeshPrivateBeacon *)decodePdu:(NSData *)pdu forMeshNetwork:(SigDataSource *)meshNetwork {
     if (pdu == nil || pdu.length <= 1) {
-        TeLogError(@"decodePdu length is less than 1.");
+        //TeLogError(@"decodePdu length is less than 1.");
         return nil;
     }
     UInt8 tem = 0;

@@ -22,10 +22,11 @@
  *******************************************************************************************************/
 
 #import <Foundation/Foundation.h>
+#import "SigEnumeration.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class SigUpperTransportPdu,SigMeshAddress;
+@class SigUpperTransportPdu,SigMeshAddress,SigMeshMessage,SigElementModel;
 
 /// 3.7.3 Access payload
 /// - seeAlso: Mesh_v1.0.pdf  (page.92)
