@@ -40,6 +40,7 @@ import android.os.Build;
 
 import android.provider.Settings;
 import android.util.Log;
+import android.widget.Toast;
 
 //import com.alibaba.fastjson.JSON;
 import com.google.gson.Gson;
@@ -1590,13 +1591,18 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         }
     }
 
+    int mapInt(int input_start, int input_end, int output_start, int output_end, int input) {
+        return (output_start + ((output_end - output_start) / (input_end - input_start)) * (input - input_start));
+    }
+
     CallbackContext sendLightnesscallback = null;
     public void mesh_sendLightnessCommand(CordovaArgs args, CallbackContext callbackContext) throws Exception {
         try {
             sendLightnesscallback = callbackContext;
             int meshAddress = args.getInt(0);
             int appKeyIndex = args.getInt(1);
-            int lightness = args.getInt(2);
+            //int lightness = args.getInt(2);
+            int lightness = mapInt(0, 255, 0, 65535, args.getInt(2));
             appKeyIndex = meshHandler.getMeshInfo().getDefaultAppKeyIndex();
             LightnessSetMessage lightnessSetMessage = LightnessSetMessage.getSimple(meshAddress, appKeyIndex, lightness, true, 0);
             // OnOffSetMessage offSetMessage = OnOffSetMessage.getSimple(meshAddress, appKeyIndex, OnOff == 1 ? OnOffSetMessage.ON : OnOffSetMessage.OFF, true, 0);
@@ -1936,6 +1942,10 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         }
         else if (event.getType().equals(GattOtaEvent.EVENT_TYPE_OTA_PROGRESS)) {
             int progress = ((GattOtaEvent) event).getProgress();
+            String progressText = "Progress :" + progress;
+            if(progress == 25 || progress == 50 || progress == 75){
+                Toast.makeText(cordova.getActivity().getApplicationContext(), progressText , 1).show();
+            }
 //            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, String.valueOf(progress));
 //            pluginResult.setKeepCallback(true);
            // deviceotacallback.sendPluginResult(pluginResult);
