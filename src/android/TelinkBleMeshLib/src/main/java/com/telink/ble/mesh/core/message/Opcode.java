@@ -4,20 +4,21 @@
  * @brief for TLSR chips
  *
  * @author telink
- * @date Sep. 30, 2010
+ * @date Sep. 30, 2017
  *
- * @par Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
+ * @par Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
+ *              http://www.apache.org/licenses/LICENSE-2.0
  *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
 package com.telink.ble.mesh.core.message;
 
@@ -305,33 +306,6 @@ public enum Opcode {
     REMOTE_PROV_PDU_REPORT(0x5F80),
 
     // mesh OTA
-    // firmware
-    /*FW_INFO_GET(0x01B6),
-    FW_INFO_STATUS(0x02B6),
-    FW_UPDATE_GET(0x03B6),
-    FW_UPDATE_PREPARE(0x04B6),
-    FW_UPDATE_START(0x05B6),
-    FW_UPDATE_ABORT(0x06B6),
-    FW_UPDATE_APPLY(0x07B6),
-    FW_UPDATE_STATUS(0x08B6),
-    FW_DISTRIBUT_GET(0x09B6),
-    FW_DISTRIBUT_START(0x0AB6),
-    FW_DISTRIBUT_STOP(0x0BB6),
-    FW_DISTRIBUT_STATUS(0x0CB6),
-    FW_DISTRIBUT_DETAIL_GET(0x0DB6),
-    FW_DISTRIBUT_DETAIL_LIST(0x0EB6),
-    // object
-    OBJ_TRANSFER_GET(0x01B7),
-    OBJ_TRANSFER_START(0x02B7),
-    OBJ_TRANSFER_ABORT(0x03B7),
-    OBJ_TRANSFER_STATUS(0x04B7),
-    OBJ_BLOCK_TRANSFER_START(0x05B7),
-    OBJ_BLOCK_TRANSFER_STATUS(0x06B7),
-    OBJ_CHUNK_TRANSFER(0x7D),
-    OBJ_BLOCK_GET(0x7E),
-    OBJ_BLOCK_STATUS(0x09B7),
-    OBJ_INFO_GET(0x0AB7),
-    OBJ_INFO_STATUS(0x0BB7),*/
 
     /**
      * BLOB Transfer
@@ -365,28 +339,28 @@ public enum Opcode {
     /**
      * Firmware Distribution
      */
-    FD_GET(0x24B7),
-    FD_START(0x6C),
-    FD_CANCEL(0x25B7),
-    FD_APPLY(0x26B7),
-    FD_STATUS(0x6B),
-    FD_RECEIVERS_GET(0x6F),
-    FD_RECEIVERS_LIST(0x20B7),
-    FD_RECEIVERS_ADD(0x21B7),
-    FD_RECEIVERS_DELETE_ALL(0x22B7),
-    FD_RECEIVERS_STATUS(0x6E),
-    FD_CAPABILITIES_GET(0x23B7),
-    FD_CAPABILITIES_STATUS(0x6D),
-    FD_UPLOAD_GET(0x27B7),
-    FD_UPLOAD_START(0x6A),
-    FD_UPLOAD_OOB_START(0x60),
-    FD_UPLOAD_CANCEL(0x28B7),
-    FD_UPLOAD_STATUS(0x5F),
-    FD_FIRMWARE_GET(0x5E),
-    FD_FIRMWARE_STATUS(0x5C),
-    FD_FIRMWARE_GET_BY_INDEX(0x29B7),
-    FD_FIRMWARE_DELETE(0x5D),
-    FD_FIRMWARE_DELETE_ALL(0x2AB7),
+    FD_GET(0x0AB6),
+    FD_START(0x0BB6),
+    FD_CANCEL(0x0CB6),
+    FD_APPLY(0x0DB6),
+    FD_STATUS(0x0EB6),
+    FD_RECEIVERS_GET(0x0FB6),
+    FD_RECEIVERS_LIST(0x10B6),
+    FD_RECEIVERS_ADD(0x11B6),
+    FD_RECEIVERS_DELETE_ALL(0x12B6),
+    FD_RECEIVERS_STATUS(0x13B6),
+    FD_CAPABILITIES_GET(0x14B6),
+    FD_CAPABILITIES_STATUS(0x15B6),
+    FD_UPLOAD_GET(0x16B6),
+    FD_UPLOAD_START(0x17B6),
+    FD_UPLOAD_OOB_START(0x18B6),
+    FD_UPLOAD_CANCEL(0x19B6),
+    FD_UPLOAD_STATUS(0x1AB6),
+    FD_FIRMWARE_GET(0x1BB6),
+    FD_FIRMWARE_STATUS(0x1CB6),
+    FD_FIRMWARE_GET_BY_INDEX(0x1DB6),
+    FD_FIRMWARE_DELETE(0x1EB6),
+    FD_FIRMWARE_DELETE_ALL(0x1FB6),
 
     /**
      * fast provision, telink private [vendor command]
@@ -399,7 +373,13 @@ public enum Opcode {
     VD_MESH_PROV_DATA_SET(0x0211CA),
     VD_MESH_PROV_CONFIRM(0x0211CB),
     VD_MESH_PROV_CONFIRM_STS(0x0211CC),
-    VD_MESH_PROV_COMPLETE(0x0211CD);
+    VD_MESH_PROV_COMPLETE(0x0211CD),
+
+    // opcode aggregator
+    OP_AGGREGATOR_SEQUENCE(0x09B8),
+    OP_AGGREGATOR_STATUS(0x10B8),
+
+    ;
 
     public final int value;
     public final String info;
@@ -444,5 +424,6 @@ public enum Opcode {
     public int getReliable() {
         return reliable;
     }
+
 
 }

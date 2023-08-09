@@ -4,20 +4,21 @@
  * @brief for TLSR chips
  *
  * @author telink
- * @date Sep. 30, 2010
+ * @date Sep. 30, 2017
  *
- * @par Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
+ * @par Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
+ *              http://www.apache.org/licenses/LICENSE-2.0
  *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
 package com.telink.ble.mesh.core.ble;
 
@@ -33,6 +34,8 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 
+import androidx.annotation.NonNull;
+
 import com.telink.ble.mesh.core.proxy.ProxyPDU;
 import com.telink.ble.mesh.util.Arrays;
 import com.telink.ble.mesh.util.MeshLogger;
@@ -44,8 +47,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import androidx.annotation.NonNull;
-
+/**
+ * used to build gatt connection and send gatt command
+ * read, write, enable/disable notification and receive notification
+ */
 public class GattConnection extends BluetoothGattCallback {
 
     private final String LOG_TAG = "GATT";
@@ -82,7 +87,7 @@ public class GattConnection extends BluetoothGattCallback {
     /**
      * connection timeout used on {@link #connect()}
      */
-    private static final int CONNECTION_TIMEOUT = 10 * 1000;
+    private static final int CONNECTION_TIMEOUT = 30 * 1000;
 
     private static final int DISCONNECTION_TIMEOUT = 2 * 1000;
 
@@ -159,6 +164,7 @@ public class GattConnection extends BluetoothGattCallback {
         enableNotifications();
         writeCCCForPx();
 //        writeCCCForPv();
+
     }
 
     public void provisionInit() {
@@ -475,7 +481,7 @@ public class GattConnection extends BluetoothGattCallback {
     }
 
     public boolean refreshCache() {
-        if (Build.VERSION.SDK_INT >= 27) return false;
+//        if (Build.VERSION.SDK_INT >= 27) return false;
         if (mGatt == null) {
             log("refresh error: gatt null");
             return false;
@@ -505,16 +511,7 @@ public class GattConnection extends BluetoothGattCallback {
 
 
     private void onServicesDiscoveredComplete(List<BluetoothGattService> services) {
-        /*StringBuffer serviceInfo = new StringBuffer("\n");
-
-        for (BluetoothGattService service : services) {
-            serviceInfo.append(service.getUuid().toString()).append("\n");
-            for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
-                serviceInfo.append("chara: \t");
-                serviceInfo.append(characteristic.getUuid().toString()).append("\n");
-            }
-        }
-        log("services: " + serviceInfo);*/
+//        printServiceInfo(services);
         log("service discover complete");
         if (mConnectionCallback != null) {
             mConnectionCallback.onServicesDiscovered(services);
@@ -522,6 +519,18 @@ public class GattConnection extends BluetoothGattCallback {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             this.mGatt.requestMtu(MTU_SIZE_MAX);
         }
+    }
+
+    private void printServiceInfo(List<BluetoothGattService> services) {
+        StringBuilder serviceInfo = new StringBuilder("\n");
+        for (BluetoothGattService service : services) {
+            serviceInfo.append(service.getUuid().toString()).append("\n");
+            for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
+                serviceInfo.append("chara: \t");
+                serviceInfo.append(characteristic.getUuid().toString()).append("\n");
+            }
+        }
+        log("services: " + serviceInfo);
     }
 
     private void onDisconnected() {
@@ -564,12 +573,14 @@ public class GattConnection extends BluetoothGattCallback {
             if (this.mConnectionState != CONN_STATE_CONNECTED)
                 return false;
         }
-        mGattRequestQueue.add(gattRequest);
+        synchronized (mGattRequestQueue) {
+            mGattRequestQueue.add(gattRequest);
+        }
         postRequest();
         return true;
     }
 
-    private void postRequest() {
+    private synchronized void postRequest() {
         synchronized (COMMAND_PROCESSING_LOCK) {
             if (isRequestProcessing) {
                 return;
@@ -901,7 +912,7 @@ public class GattConnection extends BluetoothGattCallback {
                     descriptor.setValue(data);
                     if (!this.mGatt.writeDescriptor(descriptor)) {
                         success = false;
-                        errorMsg = "write characteristic error";
+                        errorMsg = "write descriptor error";
                     }
                 } else {
                     success = false;
@@ -992,6 +1003,23 @@ public class GattConnection extends BluetoothGattCallback {
             errorMsg = "service is not offered by the remote device";
         }
 
+        if (!success) {
+            this.onRequestError(errorMsg);
+            this.onRequestComplete();
+        }
+    }
+
+
+    private void requestMtu(GattRequest gattRequest) {
+        boolean success = true;
+        String errorMsg = "";
+        final UUID serviceUUID = gattRequest.serviceUUID;
+        final UUID characteristicUUID = gattRequest.characteristicUUID;
+        final byte[] data = gattRequest.data;
+        if (!this.mGatt.requestMtu(gattRequest.mtu)) {
+            success = false;
+            errorMsg = "write characteristic error";
+        }
         if (!success) {
             this.onRequestError(errorMsg);
             this.onRequestComplete();
@@ -1193,6 +1221,14 @@ public class GattConnection extends BluetoothGattCallback {
         if (gattStatusSuccess(status)) {
             this.mtu = mtu;
         }
+        this.cancelCommandTimeoutTask();
+        if (status == BluetoothGatt.GATT_SUCCESS) {
+            this.onRequestSuccess(null);
+        } else {
+            this.onRequestError("request mtu callback fail");
+        }
+        MeshLogger.d("mtu changed : " + mtu);
+        this.onRequestComplete();
     }
 
     /************************************************************************
@@ -1250,7 +1286,7 @@ public class GattConnection extends BluetoothGattCallback {
                 if (gattRequest != null) {
 
                     boolean retry = onRequestTimeout(gattRequest);
-
+                    log("retry timeout request ? " + retry);
                     if (retry) {
                         processRequest(gattRequest);
                     } else {

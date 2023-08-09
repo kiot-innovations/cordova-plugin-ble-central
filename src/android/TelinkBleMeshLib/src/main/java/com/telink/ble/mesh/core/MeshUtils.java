@@ -4,41 +4,44 @@
  * @brief for TLSR chips
  *
  * @author telink
- * @date Sep. 30, 2010
+ * @date Sep. 30, 2017
  *
- * @par Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
+ * @par Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *			 The information contained herein is confidential and proprietary property of Telink 
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
- *           This heading MUST NOT be removed from this file.
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
  *
- * 			 Licensees are granted free, non-transferable use of the information in this 
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
+ *              http://www.apache.org/licenses/LICENSE-2.0
  *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
 package com.telink.ble.mesh.core;
 
 import android.os.ParcelUuid;
 
+import androidx.annotation.NonNull;
+
 import com.telink.ble.mesh.core.ble.MeshScanRecord;
 import com.telink.ble.mesh.core.ble.UUIDInfo;
+import com.telink.ble.mesh.core.message.MeshMessage;
+import com.telink.ble.mesh.core.message.StatusMessage;
+import com.telink.ble.mesh.core.message.aggregator.AggregatorItem;
+import com.telink.ble.mesh.core.message.aggregator.OpcodeAggregatorStatusMessage;
+import com.telink.ble.mesh.core.networking.AccessLayerPDU;
 import com.telink.ble.mesh.util.Arrays;
 
-import java.io.ByteArrayInputStream;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.SecureRandom;
-import java.security.Signature;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
-import java.security.interfaces.ECPublicKey;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
-
-import androidx.annotation.NonNull;
+import java.util.UUID;
 
 public final class MeshUtils {
 
@@ -55,6 +58,13 @@ public final class MeshUtils {
     public static final long TAI_OFFSET_SECOND = 946684800;
 
     public static final long UNSIGNED_INTEGER_MAX = 0xFFFFFFFFL;
+
+    /**
+     * sign used as message source address or dest address
+     * if is valued, the message should be recognized as local message, and should not send out
+     */
+    public static final int LOCAL_MESSAGE_ADDRESS = 0;
+
 
     private static SecureRandom rng;
 
@@ -131,7 +141,7 @@ public final class MeshUtils {
      */
     public static int bytes2Integer(byte[] buffer, ByteOrder order) {
         int re = 0;
-        int valLen = (buffer.length > 4 ? 4 : buffer.length);
+        int valLen = Math.min(buffer.length, 4);
         for (int i = 0; i < valLen; i++) {
             if (order == ByteOrder.LITTLE_ENDIAN) {
                 re |= (buffer[i] & 0xFF) << (8 * i);
@@ -225,10 +235,10 @@ public final class MeshUtils {
         return (a & UNSIGNED_INTEGER_MAX) - (b & UNSIGNED_INTEGER_MAX);
     }
 
-    static final String FORMAT_1_BYTES = "%02X";
-    static final String FORMAT_2_BYTES = "%04X";
-    static final String FORMAT_3_BYTES = "%06X";
-    static final String FORMAT_4_BYTES = "%08X";
+    private static final String FORMAT_1_BYTES = "%02X";
+    private static final String FORMAT_2_BYTES = "%04X";
+    private static final String FORMAT_3_BYTES = "%06X";
+    private static final String FORMAT_4_BYTES = "%08X";
 
     public static String formatIntegerByHex(int value) {
         if (value <= -1) {
@@ -284,4 +294,64 @@ public final class MeshUtils {
         return (oobInfo & MeshUtils.bit(8)) != 0;
     }
 
+
+    public static byte[] uuidToByteArray(String uuid) {
+        return uuidToByteArray(UUID.fromString(uuid));
+    }
+
+
+    public static byte[] uuidToByteArray(UUID uuid) {
+        ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+        bb.putLong(uuid.getMostSignificantBits());
+        bb.putLong(uuid.getLeastSignificantBits());
+        return bb.array();
+    }
+
+    public static String byteArrayToUuid(byte[] bytes) {
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        long high = bb.getLong();
+        long low = bb.getLong();
+        UUID uuid = new UUID(high, low);
+        return uuid.toString();
+    }
+
+    public static byte[] aggregateMessages(int elementAddress, List<MeshMessage> meshMessages) {
+
+        byte[] result = MeshUtils.integer2Bytes(elementAddress, 2, ByteOrder.LITTLE_ENDIAN);
+        int len;
+        boolean isLong;
+        int bufLen;
+        byte[] accessPdu;
+        for (MeshMessage msg : meshMessages) {
+            accessPdu = new AccessLayerPDU(msg.getOpcode(), msg.getParams()).toByteArray();
+            len = accessPdu.length;
+            isLong = len > 127;
+            bufLen = (isLong ? 2 : 1) + len + result.length;
+
+            ByteBuffer buffer = ByteBuffer.allocate(bufLen).order(ByteOrder.LITTLE_ENDIAN)
+                    .put(result);
+
+            len <<= 1 | (isLong ? 1 : 0);
+            if (isLong) {
+                buffer.putShort((short) len);
+            } else {
+                buffer.put((byte) len);
+            }
+            buffer.put(accessPdu);
+            result = buffer.array();
+        }
+        return result;
+    }
+
+    public static List<StatusMessage> parseOpcodeAggregatorStatus(OpcodeAggregatorStatusMessage opAggStsMsg) {
+        List<AggregatorItem> items = opAggStsMsg.statusItems;
+        if (items == null || items.size() == 0) return null;
+        List<StatusMessage> msgList = new ArrayList<>();
+        StatusMessage msg;
+        for (AggregatorItem item : items) {
+            msg = StatusMessage.createByAccessMessage(item.opcode, item.parameters);
+            msgList.add(msg);
+        }
+        return msgList;
+    }
 }
