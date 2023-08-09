@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public class MeshStorageService {
     private static MeshStorageService instance = new MeshStorageService();
@@ -149,7 +150,7 @@ public class MeshStorageService {
     private MeshStorage meshToJson(MeshInfo mesh, List<MeshNetKey> selectedNetKeys) {
         MeshStorage meshStorage = new MeshStorage();
 
-        meshStorage.meshUUID = Arrays.bytesToHexString(MeshUtils.generateRandom(16), "").toUpperCase();
+        meshStorage.meshUUID = MeshUtils.byteArrayToUuid((MeshUtils.generateRandom(16)));
 //        long time = MeshUtils.getTaiTime();
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault());
@@ -334,7 +335,7 @@ public class MeshStorageService {
         int maxRangeHigh = -1;
         int tmpHigh;
         for (MeshStorage.Provisioner provisioner : meshStorage.provisioners) {
-            if (mesh.provisionerUUID.equals(provisioner.UUID)) {
+            if (UUID.fromString(mesh.provisionerUUID).equals(UUID.fromString(provisioner.UUID))) {
                 localProvisioner = provisioner;
                 maxRangeHigh = -1;
                 break;
@@ -368,8 +369,6 @@ public class MeshStorageService {
             mesh.sno = tempMesh.sno;
         }
          */
-
-         mesh.provisionIndex = meshStorage.provisionIndex;
         if (localProvisioner == null) {
             int low = maxRangeHigh + 1;
 
@@ -381,9 +380,7 @@ public class MeshStorageService {
             mesh.unicastRange = new ArrayList<AddressRange>();
             mesh.unicastRange.add(new AddressRange(low, high));
             mesh.localAddress = low;
-//            if (meshStorage.provisionIndex == null) {
-//                mesh.resetProvisionIndex(low + 1);
-//            }
+            mesh.resetProvisionIndex(low + 1);
             mesh.addressTopLimit = high;
             mesh.sequenceNumber = 0;
 //            MeshStorage.Provisioner.AddressRange unicastRange = localProvisioner.allocatedUnicastRange.get(0);
@@ -422,11 +419,14 @@ public class MeshStorageService {
                 if (!isProvisionerNode(meshStorage, node)) {
                     deviceInfo = new NodeInfo();
                     deviceInfo.meshAddress = MeshUtils.hexString2Int(node.unicastAddress, ByteOrder.BIG_ENDIAN);
-                    deviceInfo.deviceUUID = (Arrays.hexToBytes(node.UUID.replace(":", "").replace("-", "")));
+//                    deviceInfo.deviceUUID =  Arrays.hexToBytes(node.UUID.replace(":", "").replace("-", ""));
+                    deviceInfo.deviceUUID = MeshUtils.uuidToByteArray(node.UUID);
+                    deviceInfo.macAddress = node.macAddress;
+
                     deviceInfo.elementCnt = node.elements == null ? 0 : node.elements.size();
                     deviceInfo.deviceKey = Arrays.hexToBytes(node.deviceKey);
 
-                    List<String> subList = new ArrayList<>();
+                    List<Integer> subList = new ArrayList<>();
                     PublishModel publishModel;
                     if (node.elements != null) {
                         for (MeshStorage.Element element : node.elements) {
@@ -439,8 +439,8 @@ public class MeshStorageService {
                                     int subAdr;
                                     for (String sub : model.subscribe) {
                                         subAdr = MeshUtils.hexString2Int(sub, ByteOrder.BIG_ENDIAN);
-                                        if (!subList.contains(sub)) {
-                                            subList.add(sub);
+                                        if (!subList.contains(subAdr)) {
+                                            subList.add(subAdr);
                                         }
                                     }
                                 }
@@ -514,13 +514,13 @@ public class MeshStorageService {
     // convert nodeInfo(mesh.java) to node(json)
     public MeshStorage.Node convertDeviceInfoToNode(NodeInfo deviceInfo, int appKeyIndex) {
         MeshStorage.Node node = new MeshStorage.Node();
-        node.UUID = Arrays.bytesToHexString(deviceInfo.deviceUUID).toUpperCase();
+        node.UUID = MeshUtils.byteArrayToUuid(deviceInfo.deviceUUID);
         node.unicastAddress = String.format("%04X", deviceInfo.meshAddress);
+        node.macAddress = deviceInfo.macAddress;
 
         if (deviceInfo.deviceKey != null) {
             node.deviceKey = Arrays.bytesToHexString(deviceInfo.deviceKey, "").toUpperCase();
         }
-        node.macAddress = deviceInfo.macAddress;
         node.elements = new ArrayList<>(deviceInfo.elementCnt);
 
         if (deviceInfo.compositionData != null) {
@@ -565,9 +565,8 @@ public class MeshStorageService {
 
                             model.subscribe = new ArrayList<>();
                             if (inDefaultSubModel(modelId)) {
-                                for (String subAdr : deviceInfo.subList) {
-                                    model.subscribe.add(subAdr);
-                                    //String.format("%04X", subAdr)
+                                for (int subAdr : deviceInfo.subList) {
+                                    model.subscribe.add(String.format("%04X", subAdr));
                                 }
                             }
 
@@ -633,11 +632,6 @@ public class MeshStorageService {
             for (Scheduler deviceScheduler : deviceInfo.schedulers) {
                 node.schedulers.add(MeshStorage.NodeScheduler.fromScheduler(deviceScheduler));
             }
-        }
-
-        if (deviceInfo.subList != null) {
-            node.subList = new ArrayList<String>();
-            node.subList.addAll(deviceInfo.subList);
         }
 
         return node;
@@ -764,7 +758,7 @@ public class MeshStorageService {
     // check if node is provisioner
     private boolean isProvisionerNode(MeshStorage meshStorage, MeshStorage.Node node) {
         for (MeshStorage.Provisioner provisioner : meshStorage.provisioners) {
-            if (provisioner.UUID.equals(node.UUID)) {
+            if (UUID.fromString(provisioner.UUID).equals(UUID.fromString(node.UUID))) {
                 return true;
             }
         }

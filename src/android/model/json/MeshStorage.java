@@ -30,14 +30,14 @@ import java.util.List;
 
 /**
  * Created by kee on 2018/9/10.
- *
+ * <p>
  * change type of period in publish from integer to object
  * add HeartbeatPublication and HeartbeatSubscription
  */
 
 public class MeshStorage {
 
-    public interface Defaults {
+    interface Defaults {
         String Schema = "http://json-schema.org/draft-04/schema#";
         String Version = "1.0.0";
         String Id = "http://www.bluetooth.com/specifications/assigned-numbers/mesh-profile/cdb-schema.json#";
@@ -64,13 +64,13 @@ public class MeshStorage {
 
     public String timestamp;
 
+    public boolean partial = false;
+
     public List<Provisioner> provisioners;
 
     public List<NetworkKey> netKeys;
 
     public List<ApplicationKey> appKeys;
-
-    public int provisionIndex;
 
     /**
      * contains a local node (phone), its UUID is the same with provisioner uuid
@@ -80,6 +80,7 @@ public class MeshStorage {
     public List<Group> groups;
 
     public List<Scene> scenes;
+
 
     /**
      * custom
@@ -162,6 +163,7 @@ public class MeshStorage {
         public String deviceKey;
         public String security;
         public List<NodeKey> netKeys;
+        public boolean excluded = false;
         public boolean configComplete;
         public String name;
         public String cid;
@@ -175,15 +177,12 @@ public class MeshStorage {
         public Transmit relayRetransmit;
         public List<NodeKey> appKeys;
         public List<Element> elements;
-        public boolean blacklisted;
+//        public boolean blacklisted; // removed in R10
 
         // heartbeatPub
         public HeartbeatPublication heartbeatPub;
         // heartbeatSub
         public List<HeartbeatSubscription> heartbeatSub;
-
-        // public List<Integer> subList;
-        public List<String> subList;
 
 
         // custom data for scheduler

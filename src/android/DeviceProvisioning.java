@@ -283,7 +283,7 @@ try {
   bindingDevice.setBearer(BindingBearer.GattOnly);
 //        bindingDevice.setDefaultBound(false);
   MeshService.getInstance().startBinding(new BindingParameters(bindingDevice));
-  updateDeviceStatus(pvDevice, MESH_EVENT_DEVICE_PROV_SUCCESS);
+//  updateDeviceStatus(pvDevice, MESH_EVENT_DEVICE_PROV_SUCCESS);
 
 } catch(Exception e) {
   Log.e("deded", e.toString());
@@ -329,6 +329,7 @@ try {
 //    updateDeviceStatus(pvDevice, MESH_EVENT_DEVICE_BIND_SUC);
 //    mListAdapter.notifyDataSetChanged();
     TelinkBleMeshHandler.getInstance().getMeshInfo().saveOrUpdate(this.ctx);
+    updateDeviceStatus(pvDevice, MESH_EVENT_DEVICE_PROV_SUCCESS);
   }
 
   private void onDeviceFound(AdvertisingDevice advertisingDevice) {

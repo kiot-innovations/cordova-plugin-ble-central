@@ -32,7 +32,6 @@ import com.telink.ble.mesh.entity.CompositionData;
 import com.telink.ble.mesh.entity.Scheduler;
 import com.telink.ble.mesh.util.Arrays;
 import com.telink.ble.mesh.util.MeshLogger;
-//import com.megster.cordova.ble.central.model.OnlineState;
 
 import java.io.Serializable;
 import java.nio.ByteOrder;
@@ -44,16 +43,6 @@ import java.util.List;
  */
 
 public class NodeInfo implements Serializable {
-
-
-    /**
-     * on/off state
-     */
-    public static final int ON_OFF_STATE_ON = 1;
-
-    public static final int ON_OFF_STATE_OFF = 0;
-
-    public static final int ON_OFF_STATE_OFFLINE = -1;
 
 
     /**
@@ -90,8 +79,7 @@ public class NodeInfo implements Serializable {
     /**
      * device subscription/group info
      */
-//    public List<Integer> subList = new ArrayList<>();
-    public List<String> subList = new ArrayList<>();
+    public List<Integer> subList = new ArrayList<>();
 
     // device lightness
     public int lum = 100;
@@ -103,7 +91,7 @@ public class NodeInfo implements Serializable {
      * device on off state
      * 0:off 1:on -1:offline
      */
-    private int onOff = ON_OFF_STATE_OFFLINE;
+    private OnlineState onlineState = OnlineState.OFFLINE;
 
     /**
      * composition data
@@ -111,9 +99,6 @@ public class NodeInfo implements Serializable {
      */
     public CompositionData compositionData = null;
 
-
-    // is relay enabled
-    private boolean relayEnable = true;
 
     /**
      * scheduler
@@ -124,12 +109,6 @@ public class NodeInfo implements Serializable {
      * publication
      */
     private PublishModel publishModel;
-
-    /**
-     * device on off state
-     * 0:off 1:on -1:offline
-     */
-   private OnlineState onlineState = OnlineState.OFFLINE;
 
     /**
      * default bind support
@@ -149,47 +128,52 @@ public class NodeInfo implements Serializable {
     public boolean selected = false;
 
 
+    /**
+     * configs
+     */
 
-    private OfflineCheckTask offlineCheckTask = new OfflineCheckTask() {
-        @Override
-        public void run() {
-            onOff = -1;
-            MeshLogger.log("offline check task running");
-            TelinkBleMeshHandler.getInstance().dispatchEvent(new NodeStatusChangedEvent(TelinkBleMeshHandler.getInstance(), NodeStatusChangedEvent.EVENT_TYPE_NODE_STATUS_CHANGED, NodeInfo.this));
-        }
+    // default TTL
+    public byte defaultTTL = 0x0A;
+
+    // is relay enabled
+    public boolean relayEnable = true;
+
+    // relay retransmit, include count and steps
+    public byte relayRetransmit = 0x15;
+
+    // is secure network beacon opened
+    public boolean beaconOpened = true;
+
+    // is gatt proxy enabled
+    public boolean gattProxyEnable = true;
+
+    // is friend enabled
+    public boolean friendEnable = true;
+
+    // network retransmit
+    public byte networkRetransmit = 0x15;
+
+    private OfflineCheckTask offlineCheckTask = (OfflineCheckTask) () -> {
+        onlineState = OnlineState.OFFLINE;
+        MeshLogger.log("offline check task running");
+        TelinkBleMeshHandler.getInstance().dispatchEvent(new NodeStatusChangedEvent(TelinkBleMeshHandler.getInstance(), NodeStatusChangedEvent.EVENT_TYPE_NODE_STATUS_CHANGED, NodeInfo.this));
     };
 
-    public int getOnlineState() {
-        return onOff;
+    public OnlineState getOnlineState() {
+        return onlineState;
     }
 
-    public int getOnOff() {
-        return onOff;
-    }
-
-    public void setOnOff(int onOff) {
-        this.onOff = onOff;
+    public void setOnlineState(OnlineState onlineState) {
+        this.onlineState = onlineState;
         if (publishModel != null) {
             Handler handler = TelinkBleMeshHandler.getInstance().getOfflineCheckHandler();
             handler.removeCallbacks(offlineCheckTask);
-            int timeout = publishModel.period * 3 + 2;
-            if (this.onOff != -1 && timeout > 0) {
+            int timeout = publishModel.period * 3 + 2000;
+            if (this.onlineState != OnlineState.OFFLINE && timeout > 0) {
                 handler.postDelayed(offlineCheckTask, timeout);
             }
         }
     }
-
-   public void setOnlineState(OnlineState onlineState) {
-       this.onlineState = onlineState;
-       if (publishModel != null) {
-           Handler handler = TelinkBleMeshHandler.getInstance().getOfflineCheckHandler();
-           handler.removeCallbacks(offlineCheckTask);
-           int timeout = publishModel.period * 3 + 2000;
-           if (this.onlineState != OnlineState.OFFLINE && timeout > 0) {
-               handler.postDelayed(offlineCheckTask, timeout);
-           }
-       }
-   }
 
 
     public boolean isPubSet() {
@@ -202,22 +186,15 @@ public class NodeInfo implements Serializable {
 
     public void setPublishModel(PublishModel model) {
         this.publishModel = model;
+
         Handler handler = TelinkBleMeshHandler.getInstance().getOfflineCheckHandler();
         handler.removeCallbacks(offlineCheckTask);
-        if (this.publishModel != null && this.onOff != -1) {
-            int timeout = publishModel.period * 3 + 2;
+        if (this.publishModel != null && this.onlineState != OnlineState.OFFLINE) {
+            int timeout = publishModel.period * 3 + 2000;
             if (timeout > 0) {
                 handler.postDelayed(offlineCheckTask, timeout);
             }
         }
-    }
-
-    public boolean isRelayEnable() {
-        return relayEnable;
-    }
-
-    public void setRelayEnable(boolean relayEnable) {
-        this.relayEnable = relayEnable;
     }
 
     public Scheduler getSchedulerByIndex(byte index) {
@@ -266,24 +243,13 @@ public class NodeInfo implements Serializable {
         return -1;
     }
 
-    public String getOnOffDesc() {
-        if (this.onOff == 1) {
-            return "ON";
-        } else if (this.onOff == 0) {
-            return "OFF";
-        } else if (this.onOff == -1) {
-            return "OFFLINE";
-        }
-        return "UNKNOWN";
-    }
-
     /**
      * get on/off model element info
      * in panel , multi on/off may exist in different element
      *
-     * @return adr
+     * @return element adr list
      */
-    public List<Integer> getOnOffEleAdrList() {
+    public List<Integer> getEleListByModel(int targetModelId) {
         if (compositionData == null) return null;
         List<Integer> addressList = new ArrayList<>();
 
@@ -293,7 +259,7 @@ public class NodeInfo implements Serializable {
         for (CompositionData.Element element : compositionData.elements) {
             if (element.sigModels != null) {
                 for (int modelId : element.sigModels) {
-                    if (modelId == MeshSigModel.SIG_MD_G_ONOFF_S.modelId) {
+                    if (modelId == targetModelId) {
                         addressList.add(eleAdr++);
                         continue outer;
                     }
@@ -433,7 +399,26 @@ public class NodeInfo implements Serializable {
         return this.compositionData != null && this.compositionData.lowPowerSupport();
     }
 
+    /**
+     * is node offline
+     */
     public boolean isOffline() {
-        return this.onOff == ON_OFF_STATE_OFFLINE;
+        return this.onlineState == OnlineState.OFFLINE;
+    }
+
+
+    /**
+     * is node on
+     */
+    public boolean isOn() {
+        return this.onlineState == OnlineState.ON;
+    }
+
+
+    /**
+     * is node off
+     */
+    public boolean isOff() {
+        return this.onlineState == OnlineState.OFF;
     }
 }

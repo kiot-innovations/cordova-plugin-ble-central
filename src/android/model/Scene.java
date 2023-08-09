@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+
+
 /**
  * scene
  * Created by kee on 2018/10/8.
@@ -89,7 +91,7 @@ public class Scene implements Serializable {
     public void saveFromDeviceInfo(NodeInfo deviceInfo) {
         for (SceneState state : states) {
             if (state.address == deviceInfo.meshAddress) {
-                state.onOff = deviceInfo.getOnOff();
+                state.onOff = deviceInfo.getOnlineState().st;
                 state.lum = deviceInfo.lum;
                 state.temp = deviceInfo.temp;
                 return;
@@ -97,7 +99,7 @@ public class Scene implements Serializable {
         }
         SceneState state = new SceneState();
         state.address = deviceInfo.meshAddress;
-        state.onOff = deviceInfo.getOnOff();
+        state.onOff = deviceInfo.getOnlineState().st;
         state.lum = deviceInfo.lum;
         state.temp = deviceInfo.temp;
         states.add(state);

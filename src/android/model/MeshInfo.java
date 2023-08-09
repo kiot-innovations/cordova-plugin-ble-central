@@ -31,6 +31,7 @@ import com.telink.ble.mesh.core.MeshUtils;
 import com.telink.ble.mesh.core.networking.NetworkLayerPDU;
 import com.telink.ble.mesh.foundation.MeshConfiguration;
 import com.telink.ble.mesh.foundation.event.NetworkInfoUpdateEvent;
+import com.megster.cordova.ble.central.model.Scene;
 import com.megster.cordova.ble.central.model.json.AddressRange;
 import com.telink.ble.mesh.util.Arrays;
 import com.telink.ble.mesh.util.FileSystem;
@@ -106,7 +107,7 @@ public class MeshInfo implements Serializable, Cloneable {
      *
      * @see NodeInfo#elementCnt
      */
-    public int provisionIndex = 1;
+    private int provisionIndex = 1;
 
     public int addressTopLimit = 0xFF;
 
@@ -156,11 +157,6 @@ public class MeshInfo implements Serializable, Cloneable {
                 return info;
         }
         return null;
-    }
-
-    public void updateNodeByUUID(@NonNull byte[] deviceUUID,NodeInfo deviceInfo){
-        NodeInfo local = getDeviceByUUID(deviceUUID);
-        local = deviceInfo;
     }
 
     public void insertDevice(NodeInfo deviceInfo) {
@@ -219,7 +215,7 @@ public class MeshInfo implements Serializable, Cloneable {
 
         int result = 0;
         for (NodeInfo device : nodes) {
-            if (device.getOnOff() != -1) {
+            if (!device.isOffline()) {
                 result++;
             }
         }
@@ -238,10 +234,9 @@ public class MeshInfo implements Serializable, Cloneable {
         }
         int result = 0;
         for (NodeInfo device : nodes) {
-            if (device.getOnOff() != -1) {
-                for (String addr : device.subList) {
-                   int grp_addr = Integer.parseInt(addr,16);
-                    if (grp_addr == groupAddress) {
+            if (!device.isOffline()) {
+                for (int addr : device.subList) {
+                    if (addr == groupAddress) {
                         result++;
                         break;
                     }
@@ -366,7 +361,6 @@ public class MeshInfo implements Serializable, Cloneable {
 
 
     public MeshConfiguration convertToConfiguration() {
-
         MeshConfiguration meshConfiguration = new MeshConfiguration();
         meshConfiguration.deviceKeyMap = new SparseArray<>();
         if (nodes != null) {
@@ -428,16 +422,14 @@ public class MeshInfo implements Serializable, Cloneable {
         meshInfo.provisionIndex = DEFAULT_LOCAL_ADDRESS + 1; // 0x0002
 
 //        meshInfo.provisionerUUID = SharedPreferenceHelper.getLocalUUID(context);
-        meshInfo.provisionerUUID = Arrays.bytesToHexString(MeshUtils.generateRandom(16));
+        meshInfo.provisionerUUID = MeshUtils.byteArrayToUuid((MeshUtils.generateRandom(16)));
 
         meshInfo.groups = new ArrayList<>();
         meshInfo.unicastRange = new ArrayList<>();
         meshInfo.unicastRange.add(new AddressRange(0x01, 0x400));
         meshInfo.addressTopLimit = 0x0400;
-        // TODO: Arihant
-      // FIll in group names later - Group names are like - Kitchen,Balcony etc. We may want to take these from application.
-//        String[] groupNames = context.getResources().getStringArray(R.array.group_name);
-      String[] groupNames = {"Kitchen", "Balcony"};
+        // String[] groupNames = context.getResources().getStringArray(R.array.group_name);
+        String[] groupNames = {"Kitchen", "Balcony"};
         GroupInfo group;
         for (int i = 0; i < 2; i++) {
             group = new GroupInfo();

@@ -69,6 +69,7 @@ import com.telink.ble.mesh.core.message.config.ModelSubscriptionSetMessage;
 import com.telink.ble.mesh.core.message.config.ModelSubscriptionStatusMessage;
 import com.telink.ble.mesh.core.message.config.NodeResetMessage;
 import com.telink.ble.mesh.core.message.config.NodeResetStatusMessage;
+import com.telink.ble.mesh.core.message.generic.LevelGetMessage;
 import com.telink.ble.mesh.core.message.generic.OnOffGetMessage;
 import com.telink.ble.mesh.core.message.generic.OnOffSetMessage;
 import com.telink.ble.mesh.core.message.lighting.CtlTemperatureSetMessage;
@@ -90,9 +91,7 @@ import com.telink.ble.mesh.foundation.event.MeshEvent;
 import com.telink.ble.mesh.foundation.event.OnlineStatusEvent;
 import com.telink.ble.mesh.foundation.event.ProvisioningEvent;
 import com.telink.ble.mesh.foundation.event.StatusNotificationEvent;
-import com.telink.ble.mesh.foundation.parameter.AutoConnectParameters;
 import com.telink.ble.mesh.foundation.parameter.BindingParameters;
-import com.telink.ble.mesh.foundation.parameter.GattConnectionParameters;
 import com.telink.ble.mesh.foundation.parameter.GattOtaParameters;
 import com.telink.ble.mesh.util.Arrays;
 import com.telink.ble.mesh.util.LogInfo;
@@ -248,11 +247,11 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
 
     @Override
     public void onDestroy() {
-//        removeStateListener();
-//        removeLocationStateListener();
-//        for(Peripheral peripheral : peripherals.values()) {
-//            peripheral.disconnect();
-//        }
+       removeStateListener();
+       removeLocationStateListener();
+       for(Peripheral peripheral : peripherals.values()) {
+           peripheral.disconnect();
+       }
         super.onDestroy();
         TelinkBleMeshHandler.getInstance().removeEventListener(this);
         MeshService.getInstance().clear();
@@ -264,6 +263,14 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         removeLocationStateListener();
         for(Peripheral peripheral : peripherals.values()) {
             peripheral.disconnect();
+        }
+    }
+
+    @Override
+    public void onResume(boolean multitasking) {
+        super.onResume(multitasking);
+        if (TelinkBleMeshHandler.getInstance() != null) {
+            TelinkBleMeshHandler.getInstance().autoConnect();
         }
     }
 
@@ -1443,6 +1450,9 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                 meshHandler.initialize(this.cordova.getActivity().getApplicationContext());
 //                meshHandler.addEventListener(BindingEvent.EVENT_TYPE_BIND_SUCCESS, this);
                 meshHandler.addEventListener(AutoConnectEvent.EVENT_TYPE_AUTO_CONNECT_LOGIN, this);
+                meshHandler.addEventListener(MeshEvent.EVENT_TYPE_DISCONNECTED, this);
+                
+                
 //                meshHandler.addEventListener(BindingEvent.EVENT_TYPE_BIND_FAIL, this);
 //                meshHandler.addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_SUCCESS, this);
 //                meshHandler.addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_FAIL, this);
@@ -1457,7 +1467,6 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
 //                MeshConfiguration meshConfiguration = meshHandler.getMeshInfo().convertToConfiguration();
 //                MeshService.getInstance().setupMeshNetwork(meshConfiguration);
 //
-//                this.autoConnect();
 
             }
             Util.sendPluginResult(callbackContext, true);
@@ -1513,6 +1522,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         MeshInfo meshInfo = meshHandler.getMeshInfo();
         List<MeshNetKey> selectedNetKeys = new ArrayList<MeshNetKey>(meshInfo.meshNetKeyList);
         String meshInfoStr = MeshStorageService.getInstance().meshToJsonString(meshInfo, selectedNetKeys);
+        Log.d("MESHINFOSTR", meshInfoStr);
         Util.sendPluginResult(callbackContext, meshInfoStr);
     }
 
@@ -1524,21 +1534,83 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
 
     }
 
+
+
     public void mesh_importMeshInfo(CordovaArgs args, CallbackContext callbackContext) throws Exception {
         try {
+//            String inMeshInfo = args.getString(0);
+//            Gson mGson = new GsonBuilder().setPrettyPrinting().create();
+//            MeshStorage serverMesh = mGson.fromJson(inMeshInfo, MeshStorage.class);
+//            MeshInfo tmpMesh = MeshInfo.createNewMesh(cordova.getActivity().getApplicationContext());
+////            MeshInfo tmpMesh = createNewMesh();
+//            tmpMesh.provisionerUUID = "64bac88a-35d1-11ee-be56-0242ac120002";
+//            MeshStorageService.getInstance().updateLocalMesh(serverMesh, tmpMesh);
+//            if (FileSystem.writeAsObject(cordova.getActivity().getApplicationContext(), MeshInfo.FILE_NAME, tmpMesh)) {
+//                Util.sendPluginResult(callbackContext, true);
+//            }
+//            else {
+//                Util.sendPluginResult(callbackContext, "failed");
+//            }
+//            String inMeshInfo = "¨Ì\u0000\u0005sr\u0000.com.megster.cordova.ble.central.model.MeshInfov\u001Aœ‰Õ˜}ì\u0002\u0000\n" +
+//                    "I\u0000\u000FaddressTopLimitI\u0000\u0007ivIndexI\u0000\flocalAddressI\u0000\u000EprovisionIndexI\u0000\u000EsequenceNumberL\u0000\n" +
+//                    "appKeyListt\u0000\u0010Ljava/util/List;L\u0000\u0006groupsq\u0000~\u0000\u0001L\u0000\u000EmeshNetKeyListq\u0000~\u0000\u0001L\u0000\u0005nodesq\u0000~\u0000\u0001L\u0000\boobPairsq\u0000~\u0000\u0001L\u0000\u000FprovisionerUUIDt\u0000\u0012Ljava/lang/String;L\u0000\u0006scenesq\u0000~\u0000\u0001L\u0000\funicastRangeq\u0000~\u0000\u0001xp\u0000\u0000\b\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0004\u0001\u0000\u0000\u0004\u0004\u0000\u0000\u0006\u0000sr\u0000\u0013java.util.ArrayListxÅ“\u001Dô«aù\u0003\u0000\u0001I\u0000\u0004sizexp\u0000\u0000\u0000\u0003w\u0004\u0000\u0000\u0000\u0003sr\u00000com.megster.cordova.ble.central.model.MeshAppKeyH≠<«Ñﬂ–\u007F\u0002\u0000\u0004I\u0000\u0010boundNetKeyIndexI\u0000\u0005index[\u0000\u0003keyt\u0000\u0002[BL\u0000\u0004nameq\u0000~\u0000\u0002xp\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000ur\u0000\u0002[B¨Û\u0017¯\u0006\bT‡\u0002\u0000\u0000xp\u0000\u0000\u0000\u0010*E@=Òá\u000Fm[Õ˚\u0015≈Ô5Bt\u0000\u000FDefault App Keysq\u0000~\u0000\u0006\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001uq\u0000~\u0000\t\u0000\u0000\u0000\u0010*E@=Òá\u000Fm[Õ˚\u0015≈Ô5Bt\u0000\n" +
+//                    "Sub App Key 1sq\u0000~\u0000\u0006\u0000\u0000\u0000\u0002\u0000\u0000\u0000\u0002uq\u0000~\u0000\t\u0000\u0000\u0000\u0010*E@=Òá\u000Fm[Õ˚\u0015≈Ô5Bt\u0000\n" +
+//                    "Sub App Key 2xsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0002w\u0004\u0000\u0000\u0000\u0002sr\u0000/com.megster.cordova.ble.central.model.GroupInfo$€Ïo—D#\u0001\u0002\u0000\u0003I\u0000\u0007addressZ\u0000\bselectedL\u0000\u0004nameq\u0000~\u0000\u0002xp\u0000\u0000¿\u0000\u0000t\u0000\u0007Kitchensq\u0000~\u0000\u0013\u0000\u0000¿\u0001\u0000t\u0000\u0007Balconyxsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0003w\u0004\u0000\u0000\u0000\u0003sr\u00000com.megster.cordova.ble.central.model.MeshNetKeyM?Ùﬂû\n" +
+//                    "∫“\u0002\u0000\u0003I\u0000\u0005index[\u0000\u0003keyq\u0000~\u0000\u0007L\u0000\u0004nameq\u0000~\u0000\u0002xp\u0000\u0000\u0000\u0000uq\u0000~\u0000\t\u0000\u0000\u0000\u0010˘2*£ﬁıÂg’÷K49wT`t\u0000\u000FDefault Net Keysq\u0000~\u0000\u0019\u0000\u0000\u0000\u0001uq\u0000~\u0000\t\u0000\u0000\u0000\u0010C—Æ∫Ì\u0002YÚ0S/Eıπˆ.t\u0000\n" +
+//                    "Sub Net Key 1sq\u0000~\u0000\u0019\u0000\u0000\u0000\u0002uq\u0000~\u0000\t\u0000\u0000\u0000\u0010˛^–\u000F(>®¥Àn\u001C¬(\u00152\n" +
+//                    "t\u0000\n" +
+//                    "Sub Net Key 2xsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0002w\u0004\u0000\u0000\u0000\u0002sr\u0000.com.megster.cordova.ble.central.model.NodeInfoqOÓ⁄\b\u001A´€\u0002\u0000\u001AZ\u0000\fbeaconOpenedZ\u0000\u0005boundZ\u0000\u000BdefaultBindB\u0000\n" +
+//                    "defaultTTLI\u0000\n" +
+//                    "elementCntZ\u0000\ffriendEnableZ\u0000\u000FgattProxyEnableI\u0000\u0003lumI\u0000\u000BmeshAddressB\u0000\u0011networkRetransmitZ\u0000\u000BrelayEnableB\u0000\u000FrelayRetransmitZ\u0000\bselectedZ\u0000\u0013subnetBridgeEnabledI\u0000\u0004tempL\u0000\u0011bridgingTableListq\u0000~\u0000\u0001L\u0000\u000FcompositionDatat\u0000,Lcom/telink/ble/mesh/entity/CompositionData;[\u0000\tdeviceKeyq\u0000~\u0000\u0007[\u0000\n" +
+//                    "deviceUUIDq\u0000~\u0000\u0007L\u0000\n" +
+//                    "macAddressq\u0000~\u0000\u0002L\u0000\n" +
+//                    "netKeyIndexesq\u0000~\u0000\u0001L\u0000\u0010offlineCheckTaskt\u00008Lcom/megster/cordova/ble/central/model/OfflineCheckTask;L\u0000\u000BonlineStatet\u00003Lcom/megster/cordova/ble/central/model/OnlineState;L\u0000\fpublishModelt\u00004Lcom/megster/cordova/ble/central/model/PublishModel;L\u0000\n" +
+//                    "schedulersq\u0000~\u0000\u0001L\u0000\u0007subListq\u0000~\u0000\u0001xp\u0001\u0001\u0000\n" +
+//                    "\u0000\u0000\u0000\u0002\u0001\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0002\u0015\u0001\u0015\u0000\u0000\u0000\u0000\u0000\u0000sq\u0000~\u0000\u0004\u0000\u0000\u0000\u0000w\u0004\u0000\u0000\u0000\u0000xsr\u0000*com.telink.ble.mesh.entity.CompositionDataÂ]Ôà÷\u0019\u0010∆\u0002\u0000\u0006I\u0000\u0003cidI\u0000\u0004crplI\u0000\bfeaturesI\u0000\u0003pidI\u0000\u0003vidL\u0000\belementsq\u0000~\u0000\u0001xp\u0000\u0000\u0002\u0011\u0000\u0000\u0000i\u0000\u0000\u0000\u0007\u0000\u0000\u0000\n" +
+//                    "\u0000\u000063sq\u0000~\u0000\u0004\u0000\u0000\u0000\u0002w\u0004\u0000\u0000\u0000\u0002sr\u00002com.telink.ble.mesh.entity.CompositionData$Elementˇ1≈ÙµÒ ç\u0002\u0000\u0005I\u0000\blocationI\u0000\u0006sigNumI\u0000\tvendorNumL\u0000\tsigModelsq\u0000~\u0000\u0001L\u0000\fvendorModelsq\u0000~\u0000\u0001xp\u0000\u0000\u0000\u0000\u0000\u0000\u0000\n" +
+//                    "\u0000\u0000\u0000\u0002sq\u0000~\u0000\u0004\u0000\u0000\u0000\n" +
+//                    "w\u0004\u0000\u0000\u0000\n" +
+//                    "sr\u0000\u0011java.lang.Integer\u0012‚†§˜Åá8\u0002\u0000\u0001I\u0000\u0005valuexr\u0000\u0010java.lang.NumberÜ¨ï\u001D\u000Bî‡ã\u0002\u0000\u0000xp\u0000\u0000\u0000\u0000sq\u0000~\u00001\u0000\u0000\u0000\u0002sq\u0000~\u00001\u0000\u0000\u0000\u0003sq\u0000~\u00001\u0000\u0000\u0010\u0000sq\u0000~\u00001\u0000\u0000\u0010\u0002sq\u0000~\u00001\u0000\u0000\u0010\u0004sq\u0000~\u00001\u0000\u0000\u0010\u0006sq\u0000~\u00001\u0000\u0000\u0010\u0007sq\u0000~\u00001\u0000\u0000\u0013\u0000sq\u0000~\u00001\u0000\u0000\u0013\u0001xsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0002w\u0004\u0000\u0000\u0000\u0002sq\u0000~\u00001\u0000\u0000\u0002\u0011sq\u0000~\u00001\u0000\u0001\u0002\u0011xsq\u0000~\u0000.\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0007\u0000\u0000\u0000\u0001sq\u0000~\u0000\u0004\u0000\u0000\u0000\u0007w\u0004\u0000\u0000\u0000\u0007sq\u0000~\u00001\u0000\u0000\u0010\u0000sq\u0000~\u00001\u0000\u0000\u0010\u0002sq\u0000~\u00001\u0000\u0000\u0010\u0004sq\u0000~\u00001\u0000\u0000\u0010\u0006sq\u0000~\u00001\u0000\u0000\u0010\u0007sq\u0000~\u00001\u0000\u0000\u0013\u0000sq\u0000~\u00001\u0000\u0000\u0013\u0001xsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0001w\u0004\u0000\u0000\u0000\u0001sq\u0000~\u00001\u0000\u0000\u0002\u0011xxuq\u0000~\u0000\t\u0000\u0000\u0000\u0010auQtÑ⁄ˆ+•î4ƒËÆ\u0005<uq\u0000~\u0000\t\u0000\u0000\u0000\u0010f\u0014zı≤•S;Ç§Dß\u001B@€*psq\u0000~\u0000\u0004\u0000\u0000\u0000\u0000w\u0004\u0000\u0000\u0000\u0000xsr\u0000Hcom.megster.cordova.ble.central.model.NodeInfo$$ExternalSyntheticLambda0\u0016\u0007◊\u0015-o\uF8FF \u0002\u0000\u0001L\u0000\u0003f$0t\u00000Lcom/megster/cordova/ble/central/model/NodeInfo;xpq\u0000~\u0000)~r\u00001com.megster.cordova.ble.central.model.OnlineState\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0012\u0000\u0000xr\u0000\u000Ejava.lang.Enum\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0012\u0000\u0000xpt\u0000\u0007OFFLINEpsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0000w\u0004\u0000\u0000\u0000\u0000xsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0000w\u0004\u0000\u0000\u0000\u0000xsq\u0000~\u0000$\u0001\u0001\u0000\n" +
+//                    "\u0000\u0000\u0000\u0002\u0001\u0001\u0000\u0000\u0000d\u0000\u0000\u0004\u0002\u0015\u0001\u0015\u0000\u0000\u0000\u0000\u0000\u0000sq\u0000~\u0000\u0004\u0000\u0000\u0000\u0000w\u0004\u0000\u0000\u0000\u0000xsq\u0000~\u0000+\u0000\u0000\u0002\u0011\u0000\u0000\u0000i\u0000\u0000\u0000\u0007\u0000\u0000\u0000\n" +
+//                    "\u0000\u000063sq\u0000~\u0000\u0004\u0000\u0000\u0000\u0002w\u0004\u0000\u0000\u0000\u0002sq\u0000~\u0000.\u0000\u0000\u0000\u0000\u0000\u0000\u0000\n" +
+//                    "\u0000\u0000\u0000\u0002sq\u0000~\u0000\u0004\u0000\u0000\u0000\n" +
+//                    "w\u0004\u0000\u0000\u0000\n" +
+//                    "sq\u0000~\u00001\u0000\u0000\u0000\u0000sq\u0000~\u00001\u0000\u0000\u0000\u0002sq\u0000~\u00001\u0000\u0000\u0000\u0003sq\u0000~\u00001\u0000\u0000\u0010\u0000sq\u0000~\u00001\u0000\u0000\u0010\u0002sq\u0000~\u00001\u0000\u0000\u0010\u0004sq\u0000~\u00001\u0000\u0000\u0010\u0006sq\u0000~\u00001\u0000\u0000\u0010\u0007sq\u0000~\u00001\u0000\u0000\u0013\u0000sq\u0000~\u00001\u0000\u0000\u0013\u0001xsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0002w\u0004\u0000\u0000\u0000\u0002sq\u0000~\u00001\u0000\u0000\u0002\u0011sq\u0000~\u00001\u0000\u0001\u0002\u0011xsq\u0000~\u0000.\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0007\u0000\u0000\u0000\u0001sq\u0000~\u0000\u0004\u0000\u0000\u0000\u0007w\u0004\u0000\u0000\u0000\u0007sq\u0000~\u00001\u0000\u0000\u0010\u0000sq\u0000~\u00001\u0000\u0000\u0010\u0002sq\u0000~\u00001\u0000\u0000\u0010\u0004sq\u0000~\u00001\u0000\u0000\u0010\u0006sq\u0000~\u00001\u0000\u0000\u0010\u0007sq\u0000~\u00001\u0000\u0000\u0013\u0000sq\u0000~\u00001\u0000\u0000\u0013\u0001xsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0001w\u0004\u0000\u0000\u0000\u0001sq\u0000~\u00001\u0000\u0000\u0002\u0011xxuq\u0000~\u0000\t\u0000\u0000\u0000\u0010ÇåÔ%;Ø\n" +
+//                    "ÇÚﬁ¬7Ä5*6uq\u0000~\u0000\t\u0000\u0000\u0000\u0010Œ¸=\u000F±\u0006\f>ÑÔëq•ß∑4t\u0000\u0011A4:C1:38:D0:F4:D3sq\u0000~\u0000\u0004\u0000\u0000\u0000\u0001w\u0004\u0000\u0000\u0000\u0001q\u0000~\u0000]xsq\u0000~\u0000Nq\u0000~\u0000Wq\u0000~\u0000Spsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0000w\u0004\u0000\u0000\u0000\u0000xsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0000w\u0004\u0000\u0000\u0000\u0000xxsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0000w\u0004\u0000\u0000\u0000\u0000xt\u0000$64bac88a-35d1-11ee-be56-0242ac120002sq\u0000~\u0000\u0004\u0000\u0000\u0000\u0000w\u0004\u0000\u0000\u0000\u0000xsq\u0000~\u0000\u0004\u0000\u0000\u0000\u0001w\u0004\u0000\u0000\u0000\u0001sr\u00007com.megster.cordova.ble.central.model.json.AddressRange§\u0004(Õ™•Õ/\u0002\u0000\u0002I\u0000\u0004highI\u0000\u0003lowxp\u0000\u0000\b\u0000\u0000\u0000\u0004\u0001x";
+//            if (FileSystem.writeString(cordova.getActivity().getApplicationContext().getFilesDir(), MeshInfo.FILE_NAME, inMeshInfo) != null) {
+//                Util.sendPluginResult(callbackContext, true);
+//            }
+//            else {
+//                Util.sendPluginResult(callbackContext, "failed");
+//            }
+
+
+//            Util.sendPluginResult(callbackContext, true);
+
+//            MeshService meshService = MeshService.getInstance();
+//            meshService.idle(true);
+//
             String inMeshInfo = args.getString(0);
-            MeshInfo localMesh = TelinkBleMeshHandler.getInstance().getMeshInfo();
+            MeshInfo localMesh = MeshInfo.createNewMesh(cordova.getActivity().getApplicationContext());
             MeshInfo newMesh = MeshStorageService.getInstance().importExternal(inMeshInfo, localMesh);
             if (newMesh == null) {
                 Util.sendPluginResult(callbackContext, "mesh init failed");
                 return;
             }
-            newMesh.saveOrUpdate(cordova.getActivity().getApplicationContext());
-            MeshService.getInstance().idle(true);
-            TelinkBleMeshHandler.getInstance().setupMesh(newMesh);
-//            meshHandler.setMeshInfo(newMesh);
-            MeshService.getInstance().setupMeshNetwork(newMesh.convertToConfiguration());
             Util.sendPluginResult(callbackContext, true);
+//            newMesh.saveOrUpdate(cordova.getActivity().getApplicationContext());
+//            MeshService.getInstance().idle(true);
+//
+//            TelinkBleMeshHandler.getInstance().setupMesh(newMesh);
+//
+// //            meshHandler.setMeshInfo(newMesh);
+//            MeshService.getInstance().setupMeshNetwork(newMesh.convertToConfiguration());
+//            MeshService.getInstance().checkBluetoothState();
+//            Util.sendPluginResult(callbackContext, true);
+//            MeshService.getInstance().resetExtendBearerMode(SharedPreferenceHelper.getExtendBearerMode(cordova.getContext()));
+//            TelinkBleMeshHandler.getInstance().resetNodeState();
+//            TelinkBleMeshHandler.getInstance().autoConnect();
+            
         } catch (Exception e) {
             Util.sendPluginResult(callbackContext, e.getMessage());
         }
@@ -1572,7 +1644,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
             boolean cmdSent = MeshService.getInstance().sendMeshMessage(new NodeResetMessage(targetDevice.meshAddress));
             kickDirect = meshAddress == (MeshService.getInstance().getDirectConnectedNodeAddress());
             nodeKickCallback = callbackContext;
-            if (!cmdSent || !kickDirect || true) {
+            if (!cmdSent || !kickDirect) {
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -1649,7 +1721,6 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
             int modelIndex = args.getInt(3);
 //            MeshConfiguration meshConfiguration = meshHandler.getMeshInfo().convertToConfiguration();
 //            MeshService.getInstance().setupMeshNetwork(meshConfiguration);
-            //this.autoConnect();
 
             addDeviceToGroupCallback = null;
             MeshSigModel[] models = MeshSigModel.getDefaultSubList();
@@ -1715,7 +1786,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
 
     public void mesh_autoConnect(CordovaArgs args, CallbackContext callbackContext) throws Exception {
         try {
-            this.autoConnect();
+            TelinkBleMeshHandler.getInstance().autoConnect();
         } catch (Exception e) {
             Util.sendPluginResult(callbackContext, e.getMessage());
         }
@@ -1725,7 +1796,6 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
     CallbackContext deviceotaProgress = null;
     public void mesh_deviceOTA(CordovaArgs args, CallbackContext callbackContext) throws Exception {
         try {
-            //this.autoConnect();
             deviceotacallback = callbackContext;
             //deviceotaProgress = callbackContext;
             String fileName = args.getString(0);
@@ -1783,57 +1853,26 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
     CallbackContext onoffstatuscallback = null;
     public void mesh_onoffstatus(CordovaArgs args, CallbackContext callbackContext) throws Exception {
         try {
-            onoffstatuscallback = callbackContext;
             AppSettings.ONLINE_STATUS_ENABLE = MeshService.getInstance().getOnlineStatus();
             if (!AppSettings.ONLINE_STATUS_ENABLE) {
-//                this.autoConnect();
                 MeshService.getInstance().getOnlineStatus();
             }
             int rspMax = meshHandler.getMeshInfo().getOnlineCountInAll();
-            int appKeyIndex = meshHandler.getMeshInfo().getDefaultAppKeyIndex();
+            MeshInfo meshInfo = meshHandler.getMeshInfo();
+            int appKeyIndex = meshInfo.getDefaultAppKeyIndex();
             OnOffGetMessage message = OnOffGetMessage.getSimple(0xFFFF, appKeyIndex, rspMax);
+            LevelGetMessage message2 = new LevelGetMessage(0xFFFF, appKeyIndex);
+            MeshService.getInstance().sendMeshMessage(message2);
             if (!MeshService.getInstance().sendMeshMessage(message)) {
                 Util.sendPluginResult(callbackContext, (String) null);
+                return;
             }
-
+            String json = new Gson().toJson(meshInfo.nodes);
+            Util.sendPluginResult(callbackContext, json);
         } catch (Exception e) {
             Util.sendPluginResult(callbackContext, e.getMessage());
         }
     }
-
-    private void autoConnect() {
-        MeshLogger.log("main auto connect");
-        MeshInfo meshInfo = meshHandler.getMeshInfo();
-//        MeshService.getInstance().autoConnect(new AutoConnectParameters());
-        if (meshInfo.nodes.size() == 0) {
-            MeshService.getInstance().idle(true);
-        } else {
-            int directAdr = MeshService.getInstance().getDirectConnectedNodeAddress();
-            NodeInfo nodeInfo = meshInfo.getDeviceByMeshAddress(directAdr);
-            if (nodeInfo != null && nodeInfo.compositionData != null && nodeInfo.compositionData.pid == AppSettings.PID_REMOTE) {
-                // if direct connected device is remote-control, disconnect
-                MeshService.getInstance().idle(true);
-            }
-            MeshService.getInstance().autoConnect(new AutoConnectParameters());
-
-
-            if (meshInfo.nodes != null) {
-                for (NodeInfo deviceInfo : meshInfo.nodes) {
-                    deviceInfo.setOnlineState(OnlineState.OFFLINE);
-                    deviceInfo.lum = 0;
-                    deviceInfo.temp = 0;
-                }
-            }
-//            MeshService.getInstance().getOnlineStatus();
-//            int rspMax = meshHandler.getMeshInfo().getOnlineCountInAll();
-//            int appKeyIndex = meshHandler.getMeshInfo().getDefaultAppKeyIndex();
-//            OnOffGetMessage message = OnOffGetMessage.getSimple(0xFFFF, appKeyIndex, rspMax);
-//            MeshService.getInstance().sendMeshMessage(message);
-        }
-
-    }
-
-
 
     private void onKickOutFinish() {
         if (targetDevice != null) {
@@ -1841,11 +1880,10 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
             meshHandler.getMeshInfo().removeDeviceByMeshAddress(targetDevice.meshAddress);
             meshHandler.getMeshInfo().saveOrUpdate(cordova.getContext());
             targetDevice = null;
-
-            if (nodeKickCallback != null) {
-                nodeKickCallback.success();
-                nodeKickCallback = null;
-            }
+        }
+        if (nodeKickCallback != null) {
+            nodeKickCallback.success();
+            nodeKickCallback = null;
         }
     }
 
@@ -1857,9 +1895,11 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
             onBindFail((BindingEvent) event);
         } else if (event.getType().equals(MeshEvent.EVENT_TYPE_DISCONNECTED)) {
             if (kickDirect) {
-                onKickOutFinish();
+                onKickOutFinish();  // TODO: Check is it something we did ? in their code they are only remoing callbackandmessages on mhandler. 
 //                finish();
             }
+             mHandler.removeCallbacksAndMessages(null);
+            LOG.d(TAG, "BLECENTRALPLUGIN:performed:DISCONNECTED");
         } else if (event.getType().equals(NodeResetStatusMessage.class.getName())) {
             if (!kickDirect) {
                 onKickOutFinish();
@@ -1892,7 +1932,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                         MeshInfo meshInfo = meshHandler.getMeshInfo();
                         NodeInfo deviceInfo = meshInfo.getDeviceByMeshAddress(addDeviceToGroupMeta.get(1));
                         if (addDeviceToGroupMeta.get(3) == 0) {
-                            deviceInfo.subList.add(String.valueOf(Integer.valueOf(String.format("%04X", addDeviceToGroupMeta.get(2)))));
+                            deviceInfo.subList.add(Integer.valueOf(String.valueOf(Integer.valueOf(String.format("%04X", addDeviceToGroupMeta.get(2))))));
                         } else {
                             deviceInfo.subList.remove(String.format("%04X", addDeviceToGroupMeta.get(2)));
                         }
@@ -1911,6 +1951,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
             addDeviceToGroupMeta.clear();
 
         } else if (event.getType().equals(AutoConnectEvent.EVENT_TYPE_AUTO_CONNECT_LOGIN)) {
+            LOG.d(TAG, "BLECENTRALPLUGIN:performed:AUTO_CONNECT_LOGIN");
             // get all device on off status when auto connect success
             AppSettings.ONLINE_STATUS_ENABLE = MeshService.getInstance().getOnlineStatus();
             if (!AppSettings.ONLINE_STATUS_ENABLE) {
@@ -1918,17 +1959,22 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                 int rspMax = meshHandler.getMeshInfo().getOnlineCountInAll();
                 int appKeyIndex = meshHandler.getMeshInfo().getDefaultAppKeyIndex();
                 OnOffGetMessage message = OnOffGetMessage.getSimple(0xFFFF, appKeyIndex, rspMax);
+                LevelGetMessage message2 = new LevelGetMessage(0xFFFF, appKeyIndex);
+
                 MeshService.getInstance().sendMeshMessage(message);
+                MeshService.getInstance().sendMeshMessage(message2);
+                LOG.d(TAG, "BLECENTRALPLUGIN:performed:AUTO_CONNECT_LOGIN:END");
             } else {
                 MeshLogger.log("online status enabled");
             }
             sendTimeStatus();
-//            mHandler.postDelayed(new Runnable() {
-//                @Override
-//                public void run() {
-//                    checkMeshOtaState();
-//                }
-//            }, 3 * 1000);
+
+        //     mHandler.postDelayed(new Runnable() {
+        //        @Override
+        //        public void run() {
+        //            checkMeshOtaState();
+        //        }
+        //    }, 3 * 1000);
         }
         else if (event.getType().equals(NodeStatusChangedEvent.EVENT_TYPE_NODE_STATUS_CHANGED)) {
             MeshInfo meshInfo = meshHandler.getMeshInfo();
