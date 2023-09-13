@@ -382,7 +382,7 @@ public class MeshStorageService {
             mesh.localAddress = low;
             mesh.resetProvisionIndex(low + 1);
             mesh.addressTopLimit = high;
-            mesh.sequenceNumber = 0;
+            mesh.sequenceNumber = meshStorage.sequenceNumber;
 //            MeshStorage.Provisioner.AddressRange unicastRange = localProvisioner.allocatedUnicastRange.get(0);
 //
 //            mesh.unicastRange = new AddressRange(low, high);

@@ -788,6 +788,17 @@ public class NetworkingController {
         onSequenceNumberUpdate(latestValue);
     }
 
+    public void setSequenceNumber(int sequenceNumber, boolean update) {
+        mSequenceNumber.set(sequenceNumber);
+        if (update) {
+            onSequenceNumberUpdate(sequenceNumber);
+        }
+    }
+
+    public int getSequenceNumber() {
+        return mSequenceNumber.get();
+    }
+
     private void sendNetworkPduList(List<NetworkLayerPDU> networkPduList) {
         if (mNetworkingBridge != null) {
             for (NetworkLayerPDU networkLayerPDU : networkPduList) {
@@ -877,7 +888,7 @@ public class NetworkingController {
      */
     private void onSequenceNumberUpdate(int latestSequenceNumber) {
         if (mNetworkingBridge != null) {
-            if (mSnoUpdateStep == 0 || latestSequenceNumber % mSnoUpdateStep == 0) {
+            if (true || (mSnoUpdateStep == 0 || latestSequenceNumber % mSnoUpdateStep == 0)) {
                 mNetworkingBridge.onNetworkInfoUpdate(latestSequenceNumber, (int) this.ivIndex);
             }
         }

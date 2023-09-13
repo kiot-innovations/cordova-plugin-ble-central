@@ -7,7 +7,6 @@ import android.util.Log;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.megster.cordova.ble.central.model.AppSettings;
-import com.megster.cordova.ble.central.model.CertCacheService;
 import com.megster.cordova.ble.central.model.MeshInfo;
 import com.megster.cordova.ble.central.model.MeshNetKey;
 import com.megster.cordova.ble.central.model.NetworkingDevice;
@@ -489,7 +488,7 @@ try {
 
     byte[] deviceUUID = processingDevice.nodeInfo.deviceUUID;
     ProvisioningDevice provisioningDevice = new ProvisioningDevice(processingDevice.bluetoothDevice, processingDevice.nodeInfo.deviceUUID, address);
-    provisioningDevice.setRootCert(CertCacheService.getInstance().getRootCert());
+//    provisioningDevice.setRootCert(CertCacheService.getInstance().getRootCert());
     provisioningDevice.setOobInfo(processingDevice.oobInfo);
     processingDevice.state = NetworkingState.PROVISIONING;
     processingDevice.addLog(NetworkingDevice.TAG_PROVISION, "action start -> 0x" + String.format("%04X", address));

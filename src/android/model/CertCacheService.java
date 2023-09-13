@@ -22,17 +22,17 @@
  *******************************************************************************************************/
 package com.megster.cordova.ble.central.model;
 
-        import android.content.Context;
+import android.content.Context;
 
-        import com.telink.ble.mesh.core.MeshUtils;
-        import com.telink.ble.mesh.util.FileSystem;
-        import com.telink.ble.mesh.util.MeshLogger;
+import com.telink.ble.mesh.core.MeshUtils;
+import com.telink.ble.mesh.util.FileSystem;
+import com.telink.ble.mesh.util.MeshLogger;
 
-        import java.io.File;
-        import java.io.FilenameFilter;
-        import java.nio.ByteOrder;
-        import java.util.ArrayList;
-        import java.util.List;
+import java.io.File;
+import java.io.FilenameFilter;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * cert cache
@@ -42,7 +42,6 @@ public class CertCacheService {
     private static final String CERT_CACHE_PREFIX = "tlk_cert";
 
     private static final String CERT_DIR = "certs";
-
 
     private static final String CERT_CACHE_ROOT_INDEX = "root_index";
 
@@ -65,7 +64,8 @@ public class CertCacheService {
      */
     public void load(Context context) {
         File dir = getCertDir(context);
-        if (!dir.exists()) return;
+        if (!dir.exists())
+            return;
         String[] targets = dir.list(new FilenameFilter() {
             @Override
             public boolean accept(File dir, String name) {
@@ -96,7 +96,6 @@ public class CertCacheService {
         return null;
     }
 
-
     private void loadRootIndex(Context context) {
         File dir = getCertDir(context);
         File rootIdxFile = new File(dir, CERT_CACHE_ROOT_INDEX);
@@ -118,7 +117,6 @@ public class CertCacheService {
         return new File(root, CERT_DIR);
     }
 
-
     /**
      * get firmware update cache in memory
      */
@@ -138,7 +136,8 @@ public class CertCacheService {
 
     public void delete(Context context, int index) {
         File dir = getCertDir(context);
-        if (!dir.exists()) return;
+        if (!dir.exists())
+            return;
         String[] targets = dir.list(new FilenameFilter() {
             @Override
             public boolean accept(File dir, String name) {
@@ -169,7 +168,8 @@ public class CertCacheService {
         this.certs.clear();
 
         File dir = getCertDir(context);
-        if (!dir.exists()) return;
+        if (!dir.exists())
+            return;
         String[] targets = dir.list(new FilenameFilter() {
             @Override
             public boolean accept(File dir, String name) {
@@ -206,6 +206,5 @@ public class CertCacheService {
         byte[] indexData = MeshUtils.integer2Bytes(this.rootIndex, 4, ByteOrder.LITTLE_ENDIAN);
         FileSystem.writeByteArray(getCertDir(context), CERT_CACHE_ROOT_INDEX, indexData);
     }
-
 
 }

@@ -72,6 +72,8 @@ public class MeshStorage {
 
     public List<ApplicationKey> appKeys;
 
+    public int sequenceNumber;
+
     /**
      * contains a local node (phone), its UUID is the same with provisioner uuid
      */

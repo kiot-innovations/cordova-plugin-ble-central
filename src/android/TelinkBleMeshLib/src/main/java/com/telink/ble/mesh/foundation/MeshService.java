@@ -101,6 +101,14 @@ public class MeshService implements MeshController.EventCallback {
         mController.setupMeshNetwork(configuration);
     }
 
+    public void setSequenceNumber(int sequenceNumber, boolean update) {
+        mController.setSequenceNumber(sequenceNumber, update);
+    }
+
+    public int getSequenceNumber() {
+        return mController.getSequenceNumber();
+    }
+
     /**
      * check bluetooth state
      * state will be received by BluetoothEvent
@@ -252,6 +260,8 @@ public class MeshService implements MeshController.EventCallback {
     public int getMtu() {
         return mController.getMtu();
     }
+
+    public MeshController.Mode getActionMode() { return mController.getActionMode(); }
 
     /**
      * send mesh message

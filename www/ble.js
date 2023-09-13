@@ -532,8 +532,8 @@
         sendCTLCommand: function sendCTLCommand(unicastAddress, appKeyIndex, ctl, success, failure) {
             cordova.exec(success, failure, pluginName, 'mesh_sendCTLCommand', [unicastAddress, appKeyIndex, ctl]);
         },
-        addDeviceToGroup: function addDeviceToGroup(unicastAddress, groupAddress, addDelete, modelIndex, macAddress, success, failure) {
-            cordova.exec(success, failure, pluginName, 'mesh_addDeviceToGroup', [unicastAddress, groupAddress, addDelete, modelIndex, macAddress]);
+        addDeviceToGroup: function addDeviceToGroup(unicastAddress, groupAddress, addDelete, modelIndex, targetEleAddress) {
+            return exec('mesh_addDeviceToGroup', [unicastAddress, groupAddress, addDelete, modelIndex, targetEleAddress]);
         },
         deviceOTA: function deviceOTA(file, unicastAddress, success, failure) {
             cordova.exec(success, failure, pluginName, 'mesh_deviceOTA', [file, unicastAddress]);
@@ -544,6 +544,23 @@
         autoConnect: function autoConnect() {
             return exec('mesh_autoConnect', []);
         },
-        
+        subscribeToMeshEvents: function (callback, failure) {
+            cordova.exec(callback, failure, pluginName, 'mesh_subscribeToMeshEvents', []);
+        },
+        unsubscribeFromMeshEvents: function () {
+            return exec('mesh_unsubscribeFromMeshEvents', []);
+        },
+        uploadMeshBlobToServer: function (uri, token) {
+            return exec('mesh_uploadMeshBlobToServer', [uri, token]);
+        },
+        downloadMeshBlobFromServer: function (uri, token) {
+            return exec('mesh_downloadMeshBlobFromServer', [uri, token]);
+        },
+        registerNetworkInfoCallback: function (callback, failure) {
+            cordova.exec(callback, failure, pluginName, 'mesh_registerNetworkInfoCallback', []);
+        },
+        updateIvIndexAndSeqNumber: function (ivIndex, seqNumber) {
+            return exec('mesh_updateIvIndexAndSeqNumber', [ivIndex, seqNumber]);
+        }
     };
     
