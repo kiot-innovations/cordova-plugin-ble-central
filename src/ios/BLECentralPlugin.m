@@ -375,7 +375,7 @@
     if ([SDKLibCommand isBLEInitFinish]) {
         [SDKLibCommand startMeshConnectWithComplete:^(BOOL successful) {
             if (successful) {
-                NSLog(@"mesh_autoconnect");
+                NSLog(@"mesh_autoconnect success");
             }
             CDVPluginResult *pluginResult = nil;
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
@@ -413,7 +413,12 @@
 //               }]
 //               [SDKLibCommand startMeshConnectWithComplete:^(BOOL successful) {
 //                   if(successful){
-                       [SDKLibCommand genericOnOffGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:tem successCallback:^(UInt16 source, UInt16 destination, SigGenericOnOffStatus * _Nonnull responseMessage) {} resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
+                       [SDKLibCommand genericOnOffGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:tem successCallback:^(UInt16 source, UInt16 destination, SigGenericOnOffStatus * _Nonnull responseMessage) {
+                           TeLogDebug(@"cbaCK");
+                       } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
+                           if (error) {
+                               TeLogDebug(@"error getting onOff Status");
+                           }
                            if(isResponseAll) {
                                TeLogDebug(@"getOnlineStatus finish.");
                                NSMutableArray<NSDictionary *> *connected = [NSMutableArray new];
@@ -516,11 +521,10 @@
 }
 
 - (void)mesh_sendLightnessCommand:(CDVInvokedUrlCommand *)command {
-    NSString* unicastaddress = [command argumentAtIndex:0];
-    NSString* light = [command argumentAtIndex:2];
-    NSNumberFormatter* formatter = [[NSNumberFormatter alloc] init];
-    UInt16 addr = [[formatter numberFromString:unicastaddress] unsignedShortValue];
-    UInt16 lightness = [[formatter numberFromString:light] unsignedShortValue];
+    NSNumber* unicastaddress = [command argumentAtIndex:0];
+    NSNumber* light = [command argumentAtIndex:2];
+    UInt16 addr = [unicastaddress unsignedShortValue];
+    UInt16 lightness = [light unsignedShortValue];
     [SDKLibCommand lightLightnessSetWithDestination:addr lightness:lightness retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:1 ack:YES successCallback:^(UInt16 source, UInt16 destination, SigLightLightnessStatus * _Nonnull responseMessage) {
         
     } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
@@ -569,10 +573,9 @@
 
 
 - (void)mesh_sendOnOffCommand:(CDVInvokedUrlCommand *)command {
-    NSString* unicastaddress = [command argumentAtIndex:0];
+    NSNumber* unicastaddress = [command argumentAtIndex:0];
     NSNumber* onOff = [command argumentAtIndex:2];
-    NSNumberFormatter* formatter = [[NSNumberFormatter alloc] init];
-    UInt16 addr = [[formatter numberFromString:unicastaddress] unsignedShortValue];
+    UInt16 addr = [unicastaddress unsignedShortValue];
     BOOL isOn = [onOff boolValue];
     [SDKLibCommand genericOnOffSetWithDestination:addr isOn:isOn retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:1 ack:YES successCallback:^(UInt16 source, UInt16 destination, SigGenericOnOffStatus * _Nonnull responseMessage) {
         //界面刷新统一在SDK回调函数didReceiveMessage:中进行
@@ -916,6 +919,7 @@
     NSString *meshinfo = [command argumentAtIndex:0];
     NSDictionary *dict = [LibTools getDictionaryWithJsonString:meshinfo];
     BOOL result = dict != nil;
+    CDVPluginResult *pluginResult = nil;
     if (result) {
        // TeLogDebug(@"%@",tipString);
         NSString *oldMeshUUID = SigDataSource.share.meshUUID;
@@ -951,10 +955,10 @@
             reStartSequenceNumber = YES;
         }
         //重新计算sno
-        if (reStartSequenceNumber) {
-            [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCurrentMeshProvisionAddress_key];
-            [SigDataSource.share setLocationSno:0];
-        }
+//        if (reStartSequenceNumber) {
+//            [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCurrentMeshProvisionAddress_key];
+//            [SigDataSource.share setLocationSno:0];
+//        }
         UInt16 maxAddr = SigDataSource.share.curProvisionerModel.allocatedUnicastRange.firstObject.lowIntAddress;
         NSArray *nodes = [NSArray arrayWithArray:SigDataSource.share.nodes];
         for (SigNodeModel *node in nodes) {
@@ -980,12 +984,44 @@
     //    SigDataSource.share.curAppkeyModel = nil;
         [SigDataSource.share saveLocationData];
         [SigDataSource.share.scanList removeAllObjects];
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     } else {
         NSString *tipString = [NSString stringWithFormat:@"import %@ fail!"];
         TeLogDebug(@"%@",tipString);
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:tipString];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
     }
 
+}
+
+- (void) mesh_registerNetworkInfoCallback: (CDVInvokedUrlCommand *) command {
+    [SigDataSource.share registerSeqNumberUpdateCallback:^(NSString* ivIndex, UInt32 seqNumber) {
+        NSNumberFormatter* formatter = [[NSNumberFormatter alloc] init];
+        NSString *responseString = [NSString stringWithFormat:@"{\"ivIndex\": %lu, \"sequenceNumber\": %u}",[[formatter numberFromString:ivIndex] unsignedLongValue], seqNumber];
+        CDVPluginResult *pluginResult = nil;
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:responseString];
+        [pluginResult setKeepCallbackAsBool:TRUE];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    }];
+    
+}
+
+- (void) mesh_updateIvIndexAndSeqNumber: (CDVInvokedUrlCommand *) command {
+    NSNumber *ivIndex = [command argumentAtIndex:0];
+    NSNumber *seqNumber = [command argumentAtIndex:1];
+    UInt32 currentSeqNumber = [SigDataSource.share getCurrentSequenceNumber];
+    if (currentSeqNumber != [seqNumber unsignedIntValue]) {
+        [SigDataSource.share setLocationSno:[seqNumber unsignedIntValue]];
+    }
+    if ([[NSString stringWithFormat:@"%08X", [ivIndex unsignedIntValue]] isEqualToString: [SigDataSource.share getIvIndexString]]) {
+        [SigDataSource.share updateIvIndexString: [NSString stringWithFormat:@"%08X", [ivIndex unsignedIntValue]]];
+    }
+    CDVPluginResult *pluginResult = nil;
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    
 }
 
 - (void)scan:(CDVInvokedUrlCommand*)command {

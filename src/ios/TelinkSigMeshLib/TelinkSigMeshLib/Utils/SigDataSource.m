@@ -238,8 +238,37 @@
     if ([allKeys containsObject:@"timestamp"]) {
         _timestamp = dictionary[@"timestamp"];
     }
-    if ([allKeys containsObject:@"ivIndex"]) {
-        _ivIndex = dictionary[@"ivIndex"];
+    if ([allKeys containsObject:@"ivIndex"]) {        
+//        NSNumber *ivNumber = dictionary[@"ivIndex"];
+//        NSUInteger ivValue = [ivNumber unsignedIntegerValue];
+//        _ivIndex = [NSString stringWithFormat:@"%08X", ivValue];
+        
+        id ivValue = dictionary[@"ivIndex"];
+        if ([ivValue isKindOfClass:[NSNumber class]]) {
+            // Value is an NSNumber (or int when stored in the dictionary)
+            unsigned long intValue = [ivValue unsignedIntegerValue];
+            _ivIndex = [NSString stringWithFormat:@"%08X", intValue];
+        } else if ([ivValue isKindOfClass:[NSString class]]) {
+            // Value is already a string; we'll assume you want to check if it's 8 characters long
+            if ([(NSString *)ivValue length] != 8) {
+                // Handle this case as you see fit, e.g., log an error or adjust the format
+                NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+                NSNumber *numberValue = [formatter numberFromString:(NSString *)ivValue];
+                unsigned long intValue = [numberValue unsignedIntegerValue];
+                _ivIndex = [NSString stringWithFormat:@"%08X", intValue];
+            } else {
+                _ivIndex = ivValue;
+            }
+        } else {
+            // Handle other unexpected types if needed
+            NSLog(@"Unexpected type for ivIndex key: %@", [ivValue class]);
+            _ivIndex = @"00000000";
+        }
+        
+    }
+    if ([allKeys containsObject:@"sequenceNumber"]) {
+        NSUInteger seqNumber = [dictionary[@"sequenceNumber"] unsignedIntegerValue];
+        [self setLocationSno:(UInt32) seqNumber];
     }
     if ([allKeys containsObject:@"partial"]) {
         _partial = [dictionary[@"partial"] boolValue];
@@ -1071,6 +1100,9 @@
     //    TeLogVerbose(@"sno=0x%x",(unsigned int)sno);
     [[NSUserDefaults standardUserDefaults] setObject:@(sno) forKey:kCurrenProvisionerSno_key];
     [[NSUserDefaults standardUserDefaults] synchronize];
+    if (_ivCb) {
+        _ivCb(_ivIndex, self.sequenceNumberOnDelegate);
+    }
 }
 
 - (void)updateIvIndexString:(NSString *)ivIndexString {
@@ -1090,6 +1122,9 @@
                 [weakSelf.delegate onSequenceNumberUpdate:weakSelf.sequenceNumberOnDelegate ivIndexUpdate:[LibTools uint32From16String:blockIv]];
             }
         });
+        if (_ivCb) {
+            _ivCb(_ivIndex, self.sequenceNumberOnDelegate);
+        }
     }
 }
 
@@ -1593,6 +1628,19 @@
     NSData *data = [NSKeyedArchiver archivedDataWithRootObject:self.OOBList];
     [[NSUserDefaults standardUserDefaults] setObject:data forKey:kOOBStoreKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+
+- (void) registerSeqNumberUpdateCallback: (ivUpdateCallback)cb {
+    _ivCb = cb;
+}
+
+- (UInt32) getCurrentSequenceNumber {
+    return _sequenceNumberOnDelegate;
+}
+
+- (NSString *) getIvIndexString {
+    return _ivIndex;
 }
 
 #pragma mark - new api since v3.3.3

@@ -59,6 +59,9 @@
 - (void)mesh_sendLightnessCommand: (CDVInvokedUrlCommand *)command;
 - (void)mesh_sendCTLCommand: (CDVInvokedUrlCommand *)command;
 - (void)mesh_deviceOTA: (CDVInvokedUrlCommand *)command;
+- (void)mesh_registerNetworkInfoCallback: (CDVInvokedUrlCommand *) command;
+- (void)mesh_updateIvIndexAndSeqNumber: (CDVInvokedUrlCommand *) command;
+
 - (void)scan:(CDVInvokedUrlCommand *)command;
 - (void)startScan:(CDVInvokedUrlCommand *)command;
 - (void)startScanWithOptions:(CDVInvokedUrlCommand *)command;
