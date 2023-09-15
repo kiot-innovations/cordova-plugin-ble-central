@@ -388,84 +388,99 @@
     NSLog(@"mesh_onoffstatus");
     CDVPluginResult *pluginResult = nil;
     if (SigMeshLib.share.isBusyNow) {
-               TeLogInfo(@"send request for onlinestatus, but busy now.");
-                   NSError *error = [NSError errorWithDomain:kSigMeshLibIsBusyErrorMessage code:kSigMeshLibIsBusyErrorCode userInfo:nil];
-//        NSArray *curNodes = [NSArray arrayWithArray:SigDataSource.share.curNodes];
-//        NSError * err;
-//        NSData * jsonData = [NSJSONSerialization dataWithJSONObject:curNodes options:0 error:&err];
+        TeLogInfo(@"send request for onlinestatus, but busy now.");
+        NSError *error = [NSError errorWithDomain:kSigMeshLibIsBusyErrorMessage code:kSigMeshLibIsBusyErrorCode userInfo:nil];
         CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
                                                           messageAsString:(@"SDK is busy, because SigMeshLib.share.commands.count isn't empty.")];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
            } else {
                TeLogInfo(@"send request for onlinestatus");
-               int tem = 0;
-                   NSArray *curNodes = [NSArray arrayWithArray:SigDataSource.share.curNodes];
-                   for (SigNodeModel *node in curNodes) {
-                       if (!node.isSensor && !node.isRemote && node.isKeyBindSuccess) {
-                           tem++;
-                       }
-                   }
-//               [SDKLibCommand stopMeshConnectWithComplete:^(BOOL successful) {
-//                   if(successful){
-//
+//               int tem = 0;
+//               NSArray *curNodes = [NSArray arrayWithArray:SigDataSource.share.curNodes];
+//               for (SigNodeModel *node in curNodes) {
+//                   if (!node.isSensor && !node.isRemote && node.isKeyBindSuccess) {
+//                       tem++;
 //                   }
-//               }]
-//               [SDKLibCommand startMeshConnectWithComplete:^(BOOL successful) {
-//                   if(successful){
-                       [SDKLibCommand genericOnOffGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:tem successCallback:^(UInt16 source, UInt16 destination, SigGenericOnOffStatus * _Nonnull responseMessage) {
-                           TeLogDebug(@"cbaCK");
-                       } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
-                           if (error) {
-                               TeLogDebug(@"error getting onOff Status");
-                           }
-                           if(isResponseAll) {
-                               TeLogDebug(@"getOnlineStatus finish.");
-                               NSMutableArray<NSDictionary *> *connected = [NSMutableArray new];
-                               CDVPluginResult *pluginResult = nil;
-                   //            NSData *data = [SigDataSource.share getLocationMeshData];
-                   //            NSDictionary *meshDict = [LibTools getDictionaryWithJSONData:data];
-                               NSArray *curNodes = [NSArray arrayWithArray:SigDataSource.share.curNodes];
-        //                       NSError * err;
-        //                       NSData * jsonData = [NSJSONSerialization dataWithJSONObject:curNodes options:0 error:&err];
-                           //                                [self setDictionaryToDataSource:meshDict];
-                               for (SigNodeModel *node in curNodes) {
-                                   NSString *onoff;
-                                   if(node.state == DeviceStateOutOfLine){
-                                       onoff = @"-1";
-                                   }
-                                   else if(node.state == DeviceStateOn){
-                                       onoff = @"1";
-                                   } else {
-                                       onoff = @"0";
-                                   }
-                                   NSString *addr = [NSString stringWithFormat:@"%d",node.address];
-                                   NSDictionary *device = [NSDictionary dictionaryWithObjectsAndKeys:
-                                   addr, @"meshAddress",
-                                   onoff,@"onOff",
-                                   nil];
-        //                           NSDictionary *devicefinal = [NSDictionary dictionaryWithObjectsAndKeys:
-        //                           device, @"nodeInfo",
-        //                           nil];
-                                   [connected addObject:device];
-                               }
-                              // NSLog(@"mesh_Devices",connected);
-                               NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
-                               connected, @"devices",
-                               nil];
-                               pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
-                             
-                              [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-                           } else {
-                               TeLogDebug(@"getonoff fail.");
-                           }
-                          
-                       }];
+//               }
+//
+               TeLogDebug(@"getOnlineStatus finish.");
+               NSMutableArray<NSDictionary *> *connected = [NSMutableArray new];
+               CDVPluginResult *pluginResult = nil;
+               NSArray *curNodes = [NSArray arrayWithArray:SigDataSource.share.curNodes];
+               for (SigNodeModel *node in curNodes) {
+                   BOOL onoff;
+                   BOOL isOnline = false;
+                   if (node.state == DeviceStateOutOfLine) {
+                       isOnline = true;
                    }
+                   else if (node.state == DeviceStateOn) {
+                       onoff = true;
+                       isOnline = true;
+                   } else {
+                       onoff = false;
+                       isOnline = true;
+                   }
+                   NSString *addr = [NSString stringWithFormat:@"%d",node.address];
+                   NSDictionary *device = [NSDictionary dictionaryWithObjectsAndKeys:
+                   [NSNumber numberWithInt:node.address], @"meshAddress",
+                   [NSNumber numberWithBool:onoff] ,@"onOff",
+                   [NSNumber numberWithBool:isOnline], @"isOnline",
+                   nil];
+                   [connected addObject:device];
+               }
+               NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
+               connected, @"devices",
+               nil];
+               pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
+             
+              [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+               
+               
+//               [SDKLibCommand genericOnOffGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:tem successCallback:^(UInt16 source, UInt16 destination, SigGenericOnOffStatus * _Nonnull responseMessage) {
+//                   TeLogDebug(@"cbaCK");
+//               } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
+//                   if (error) {
+//                       TeLogDebug(@"error getting onOff Status");
+//                   }
+//                   if(isResponseAll) {
+//                       TeLogDebug(@"getOnlineStatus finish.");
+//                       NSMutableArray<NSDictionary *> *connected = [NSMutableArray new];
+//                       CDVPluginResult *pluginResult = nil;
+//                       NSArray *curNodes = [NSArray arrayWithArray:SigDataSource.share.curNodes];
+//                       for (SigNodeModel *node in curNodes) {
+//                           NSString *onoff;
+//                           if(node.state == DeviceStateOutOfLine){
+//                               onoff = @"-1";
+//                           }
+//                           else if(node.state == DeviceStateOn){
+//                               onoff = @"1";
+//                           } else {
+//                               onoff = @"0";
+//                           }
+//                           NSString *addr = [NSString stringWithFormat:@"%d",node.address];
+//                           NSDictionary *device = [NSDictionary dictionaryWithObjectsAndKeys:
+//                           addr, @"meshAddress",
+//                           onoff,@"onOff",
+//                           nil];
+////                           NSDictionary *devicefinal = [NSDictionary dictionaryWithObjectsAndKeys:
+////                           device, @"nodeInfo",
+////                           nil];
+//                           [connected addObject:device];
+//                       }
+//                      // NSLog(@"mesh_Devices",connected);
+//                       NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
+//                       connected, @"devices",
+//                       nil];
+//                       pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
+//
+//                      [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+//                   } else {
+//                       TeLogDebug(@"getonoff fail.");
+//                   }
+//
 //               }];
-//
-//
-//                   }
+           }
 }
 
 - (void)mesh_sendCTLCommand:(CDVInvokedUrlCommand *)command {
@@ -524,7 +539,8 @@
     NSNumber* unicastaddress = [command argumentAtIndex:0];
     NSNumber* light = [command argumentAtIndex:2];
     UInt16 addr = [unicastaddress unsignedShortValue];
-    UInt16 lightness = [light unsignedShortValue];
+    UInt16 lightness255 = [light unsignedShortValue];
+    UInt16 lightness = (UInt16)(((float)lightness255 / 255.0) * 65535);
     [SDKLibCommand lightLightnessSetWithDestination:addr lightness:lightness retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:1 ack:YES successCallback:^(UInt16 source, UInt16 destination, SigLightLightnessStatus * _Nonnull responseMessage) {
         
     } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
