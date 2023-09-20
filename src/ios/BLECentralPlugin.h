@@ -43,6 +43,10 @@
 @property (strong, nonatomic) NSMutableSet *peripherals;
 @property (strong, nonatomic) CBCentralManager *manager;
 
+@property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSMutableDictionary *> *meshOnlineStatuses;
+
+- (void)updateMeshOnlineStatuses:(UInt16)meshAddress withAttribute:(NSString *)attribute value:(id)value;
+
 
 - (void)mesh_initialize:(CDVInvokedUrlCommand *)command;
 - (void)mesh_autoConnect:(CDVInvokedUrlCommand *)command;
@@ -61,6 +65,8 @@
 - (void)mesh_deviceOTA: (CDVInvokedUrlCommand *)command;
 - (void)mesh_registerNetworkInfoCallback: (CDVInvokedUrlCommand *) command;
 - (void)mesh_updateIvIndexAndSeqNumber: (CDVInvokedUrlCommand *) command;
+- (void)mesh_subscribeToMeshEvents:  (CDVInvokedUrlCommand *) command;
+- (void)mesh_unsubscribeToMeshEvents:  (CDVInvokedUrlCommand *) command;
 
 - (void)scan:(CDVInvokedUrlCommand *)command;
 - (void)startScan:(CDVInvokedUrlCommand *)command;

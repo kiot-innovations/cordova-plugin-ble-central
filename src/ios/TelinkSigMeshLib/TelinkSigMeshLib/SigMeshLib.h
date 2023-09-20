@@ -76,6 +76,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, weak, readonly) id <SigMessageDelegate>delegate;
 @property (nonatomic, weak, readwrite) id <SigMessageDelegate>delegateForDeveloper;
 
+typedef void (^SubscriberForDidReceiveMessageCallback) (SigMeshMessage * message, UInt16 source, UInt16 destination);
+@property (nonatomic, copy) SubscriberForDidReceiveMessageCallback subscriberDidReceiveMessageCb;
+
+
 #pragma mark - Network Manager properties
 
 /// The Default TTL will be used for sending messages, if the value has not been set in the Provisioner's Node. By default it is set to 10, which is a reasonable value. The TTL shall be in range 2...127.
@@ -140,6 +144,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// @param bright100 bright of node
 /// @param temperature100 temperature of node
 - (void)updateOnlineStatusWithDeviceAddress:(UInt16)address deviceState:(DeviceState)state bright100:(UInt8)bright100 temperature100:(UInt8)temperature100;
+
+- (void)registerSubscriberForDidReceiveMessage:(SubscriberForDidReceiveMessageCallback) callback;
 
 #pragma mark - Send Mesh Messages
 

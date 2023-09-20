@@ -2760,7 +2760,7 @@
     }
 }
 
-+ (void)startMeshSDK {
++ (void)startMeshSDKWithCallback:(initmeshCallback)callback {
     //初始化本地存储的mesh网络数据
     [SigMeshLib.share.dataSource configData];
 
@@ -2774,6 +2774,9 @@
     [[SigBluetooth share] bleInit:^(CBCentralManager * _Nonnull central) {
         TeLogInfo(@"finish init SigBluetooth.");
         [SigMeshLib share];
+        if (callback) {
+            callback(YES);
+        }
     }];
     
 //    ///默认为NO，连接速度更加快。设置为YES，表示扫描到的设备必须包含MacAddress，有些客户在添加流程需要通过MacAddress获取三元组信息，需要使用YES。
