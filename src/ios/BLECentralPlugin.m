@@ -446,21 +446,21 @@
             
             __block BOOL onOffRespComplete = NO;
             __block BOOL lumRespComplete = NO;
-            
-            int tem = 0;
-            NSArray *curNodes = [NSArray arrayWithArray:SigDataSource.share.curNodes];
-            for (SigNodeModel *node in curNodes) {
-                if (!node.isSensor && !node.isRemote && node.isKeyBindSuccess) {
-                    tem++;
-                }
-            }
-            if (tem > 10) {
-                tem = 10;
-            }
+//            tem is used to wait for number of devices, as an argument to responseMaxCount, 0 is making the performace faster, as its not waiting for anything. So removing this block now
+//            int tem = 0;
+//            NSArray *curNodes = [NSArray arrayWithArray:SigDataSource.share.curNodes];
+//            for (SigNodeModel *node in curNodes) {
+//                if (!node.isSensor && !node.isRemote && node.isKeyBindSuccess) {
+//                    tem++;
+//                }
+//            }
+//            if (tem > 10) {
+//                tem = 10;
+//            }
             
             
             NSMutableArray *onlineDevicesArray = [NSMutableArray array];
-            [SDKLibCommand genericOnOffGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:tem successCallback:^(UInt16 source, UInt16 destination, SigGenericOnOffStatus * _Nonnull responseMessage) {
+            [SDKLibCommand genericOnOffGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:0 successCallback:^(UInt16 source, UInt16 destination, SigGenericOnOffStatus * _Nonnull responseMessage) {
                 if (responseMessage.isOn == YES || responseMessage.isOn == NO) {
                     BOOL sendResponse = YES;
                     NSDictionary *innerDict = [self->_meshOnlineStatuses objectForKey:@(source)];
@@ -524,7 +524,7 @@
             }];
             
             NSMutableArray *onlineDevicesArray2 = [NSMutableArray array];
-            [SDKLibCommand genericLevelGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:tem successCallback:^(UInt16 source, UInt16 destination, SigGenericLevelStatus * _Nonnull responseMessage) {
+            [SDKLibCommand genericLevelGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:0 successCallback:^(UInt16 source, UInt16 destination, SigGenericLevelStatus * _Nonnull responseMessage) {
 //                NSData* data = [responseMessage parameters];
 //                UInt16 presentLightness;
 //                [data getBytes:&presentLightness range:NSMakeRange(0, 2)];
