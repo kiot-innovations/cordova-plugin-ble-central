@@ -76,7 +76,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, weak, readonly) id <SigMessageDelegate>delegate;
 @property (nonatomic, weak, readwrite) id <SigMessageDelegate>delegateForDeveloper;
 
-typedef void (^SubscriberForDidReceiveMessageCallback) (SigMeshMessage * message, UInt16 source, UInt16 destination);
+typedef void (^SubscriberForDidReceiveMessageCallback) (SigMeshMessage * _Nullable message, UInt16 source, UInt16 destination);
 @property (nonatomic, copy) SubscriberForDidReceiveMessageCallback subscriberDidReceiveMessageCb;
 
 
@@ -145,7 +145,7 @@ typedef void (^SubscriberForDidReceiveMessageCallback) (SigMeshMessage * message
 /// @param temperature100 temperature of node
 - (void)updateOnlineStatusWithDeviceAddress:(UInt16)address deviceState:(DeviceState)state bright100:(UInt8)bright100 temperature100:(UInt8)temperature100;
 
-- (void)registerSubscriberForDidReceiveMessage:(SubscriberForDidReceiveMessageCallback) callback;
+- (void)registerSubscriberForDidReceiveMessage:(SubscriberForDidReceiveMessageCallback _Nullable) callback;
 
 #pragma mark - Send Mesh Messages
 
