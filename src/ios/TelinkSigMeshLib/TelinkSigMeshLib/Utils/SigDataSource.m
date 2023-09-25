@@ -1088,7 +1088,8 @@
 }
 
 - (void)setLocationSno:(UInt32)sno {
-    if ((sno - _sequenceNumberOnDelegate >= self.defaultSequenceNumberIncrement) || (sno < _sequenceNumberOnDelegate)) {
+//    if ((sno - _sequenceNumberOnDelegate >= self.defaultSequenceNumberIncrement) || (sno < _sequenceNumberOnDelegate)) {
+    if ((sno - _sequenceNumberOnDelegate >= 1) || (sno < _sequenceNumberOnDelegate)) {
         self.sequenceNumberOnDelegate = sno;
         __weak typeof(self) weakSelf = self;
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -1100,9 +1101,6 @@
     //    TeLogVerbose(@"sno=0x%x",(unsigned int)sno);
     [[NSUserDefaults standardUserDefaults] setObject:@(sno) forKey:kCurrenProvisionerSno_key];
     [[NSUserDefaults standardUserDefaults] synchronize];
-    if (_ivCb) {
-        _ivCb(_ivIndex, self.sequenceNumberOnDelegate);
-    }
 }
 
 - (void)updateIvIndexString:(NSString *)ivIndexString {
@@ -1122,9 +1120,6 @@
                 [weakSelf.delegate onSequenceNumberUpdate:weakSelf.sequenceNumberOnDelegate ivIndexUpdate:[LibTools uint32From16String:blockIv]];
             }
         });
-        if (_ivCb) {
-            _ivCb(_ivIndex, self.sequenceNumberOnDelegate);
-        }
     }
 }
 
@@ -1564,6 +1559,15 @@
     return tem;
 }
 
+- (SigGroupModel *)addGroupWithGroupAddress:(UInt16)groupAddress parentAddress: (UInt16)parentAddress  groupName: (NSString*) groupName {
+    SigGroupModel *newGrp = [[SigGroupModel alloc] init];
+    newGrp.address = [NSString stringWithFormat:@"%04X", groupAddress];
+    newGrp.parentAddress = [NSString stringWithFormat:@"%04X", parentAddress];
+    newGrp.name = groupName;
+    [_groups addObject:newGrp];
+    return newGrp;
+}
+
 - (DeviceTypeModel *)getNodeInfoWithCID:(UInt16)CID PID:(UInt16)PID {
     DeviceTypeModel *model = nil;
     NSArray *defaultNodeInfos = [NSArray arrayWithArray:_defaultNodeInfos];
@@ -1630,10 +1634,6 @@
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
-
-- (void) registerSeqNumberUpdateCallback: (ivUpdateCallback)cb {
-    _ivCb = cb;
-}
 
 - (UInt32) getCurrentSequenceNumber {
     return _sequenceNumberOnDelegate;

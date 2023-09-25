@@ -226,12 +226,9 @@
 
 - (SigGroupModel *)getGroupModelWithGroupAddress:(UInt16)groupAddress;
 
+- (SigGroupModel *)addGroupWithGroupAddress:(UInt16)groupAddress parentAddress: (UInt16)parentAddress  groupName: (NSString*) groupName;
+
 - (DeviceTypeModel *)getNodeInfoWithCID:(UInt16)CID PID:(UInt16)PID;
-
-typedef void (^ivUpdateCallback)(NSString *ivIndex, UInt32 seqNumber);
-@property (nonatomic, copy) ivUpdateCallback ivCb;
-
-- (void) registerSeqNumberUpdateCallback: (ivUpdateCallback) cb;
 
 - (UInt32) getCurrentSequenceNumber;
 - (NSString *) getIvIndexString;

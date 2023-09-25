@@ -25,7 +25,7 @@
 #import "BLEStreamContext.h"
 #import "CBPeripheral+Extensions.h"
 
-@interface BLECentralPlugin : CDVPlugin <CBCentralManagerDelegate, CBPeripheralDelegate> {
+@interface BLECentralPlugin : CDVPlugin <CBCentralManagerDelegate, CBPeripheralDelegate, SigDataSourceDelegate> {
     NSString* discoverPeripheralCallbackId;
     NSString* stateCallbackId;
     NSMutableDictionary* connectCallbacks;
@@ -43,7 +43,11 @@
 @property (strong, nonatomic) NSMutableSet *peripherals;
 @property (strong, nonatomic) CBCentralManager *manager;
 
+@property (nonatomic, assign) NSTimeInterval lastAllPingTime;
+
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSMutableDictionary *> *meshOnlineStatuses;
+
+@property (strong, nonatomic) CDVInvokedUrlCommand* commandForSeqNumberUpdate;
 
 - (void)updateMeshOnlineStatuses:(UInt16)meshAddress withAttribute:(NSString *)attribute value:(id)value;
 
@@ -57,7 +61,6 @@
 - (void)mesh_importMeshInfo: (CDVInvokedUrlCommand *)command;
 - (void)mesh_kickOutDevice: (CDVInvokedUrlCommand *)command;
 - (void)mesh_addDeviceToGroup: (CDVInvokedUrlCommand *)command;
-- (void)mesh_groupControl: (CDVInvokedUrlCommand *)command;
 - (void)mesh_bindDevice: (CDVInvokedUrlCommand *)command;
 - (void)mesh_sendOnOffCommand: (CDVInvokedUrlCommand *)command;
 - (void)mesh_sendLightnessCommand: (CDVInvokedUrlCommand *)command;
@@ -66,7 +69,7 @@
 - (void)mesh_registerNetworkInfoCallback: (CDVInvokedUrlCommand *) command;
 - (void)mesh_updateIvIndexAndSeqNumber: (CDVInvokedUrlCommand *) command;
 - (void)mesh_subscribeToMeshEvents:  (CDVInvokedUrlCommand *) command;
-- (void)mesh_unsubscribeToMeshEvents:  (CDVInvokedUrlCommand *) command;
+- (void)mesh_unsubscribeFromMeshEvents:  (CDVInvokedUrlCommand *) command;
 
 - (void)scan:(CDVInvokedUrlCommand *)command;
 - (void)startScan:(CDVInvokedUrlCommand *)command;
