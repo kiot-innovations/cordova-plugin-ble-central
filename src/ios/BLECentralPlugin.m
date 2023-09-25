@@ -1042,7 +1042,7 @@
 
         TeLogInfo(@"send request for edit subscribe list");
         if ([isAdd unsignedShortValue] == 0) {
-            [SDKLibCommand configModelSubscriptionAddWithDestination:[unicastAddress unsignedShortValue] toGroupAddress:[groupAddress unsignedShortValue] elementAddress:[targetElementAddress unsignedShortValue] modelIdentifier:modelIdentifier companyIdentifier:0 retryCount:4 responseMaxCount:1 successCallback:^(UInt16 source,UInt16 destination,SigConfigModelSubscriptionStatus *responseMessage) {
+            [SDKLibCommand configModelSubscriptionAddWithDestination:[unicastAddress unsignedShortValue] toGroupAddress:[groupAddress unsignedShortValue] elementAddress:[targetElementAddress unsignedShortValue] + [unicastAddress unsignedShortValue] modelIdentifier:modelIdentifier companyIdentifier:0 retryCount:4 responseMaxCount:1 successCallback:^(UInt16 source,UInt16 destination,SigConfigModelSubscriptionStatus *responseMessage) {
                 if (source == [unicastAddress unsignedShortValue] && responseMessage.isSuccess == YES) {
                     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:(@"successgroup")];
                     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -1062,7 +1062,7 @@
         } else {
             //[SDKLibCommand configModelSubscriptionDeleteWithDestination:destination groupAddress:groupAddress elementAddress:elementAddress modelIdentifier:modelIdentifier companyIdentifier:companyIdentifier retryCount:retryCount responseMaxCount:responseMaxCount successCallback:successCallback resultCallback:resultCallback];
             
-            [SDKLibCommand configModelSubscriptionDeleteWithDestination:[unicastAddress unsignedShortValue] groupAddress:[groupAddress unsignedShortValue] elementAddress:[targetElementAddress unsignedShortValue] modelIdentifier:modelIdentifier companyIdentifier:0 retryCount:4 responseMaxCount:1 successCallback:^(UInt16 source,UInt16 destination,SigConfigModelSubscriptionStatus *responseMessage) {
+            [SDKLibCommand configModelSubscriptionDeleteWithDestination:[unicastAddress unsignedShortValue] groupAddress:[groupAddress unsignedShortValue] elementAddress:[targetElementAddress unsignedShortValue] + [unicastAddress unsignedShortValue] modelIdentifier:modelIdentifier companyIdentifier:0 retryCount:4 responseMaxCount:1 successCallback:^(UInt16 source,UInt16 destination,SigConfigModelSubscriptionStatus *responseMessage) {
                 if (source == [unicastAddress unsignedShortValue] && responseMessage.isSuccess == YES) {
                     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:(@"successgroup")];
                     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
