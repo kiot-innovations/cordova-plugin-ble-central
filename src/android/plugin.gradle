@@ -1,0 +1,12 @@
+dependencies {
+    implementation 'com.madgag.spongycastle:core:1.58.0.0'
+    implementation 'com.madgag.spongycastle:prov:1.58.0.0'
+    implementation fileTree(include: ['*.aar'], dir: 'libs')
+//   implementation 'TelinkBleMeshLib', ext: 'aar'
+}
+
+repositories{
+      flatDir{
+              dirs 'src/main/libs'
+       }
+ }

@@ -23,6 +23,7 @@
     NSDictionary *bluetoothStates;
 }
 - (CBPeripheral *)findPeripheralByUUID:(NSString *)uuid;
+- (CBPeripheral *)retrievePeripheralWithUUID:(NSString *)uuid;
 - (void)stopScanTimer:(NSTimer *)timer;
 @end
 
@@ -37,9 +38,22 @@
 
     [super pluginInitialize];
 
-    peripherals = [NSMutableSet new];
-    manager = [[CBCentralManager alloc] initWithDelegate:self queue:nil options:@{CBCentralManagerOptionShowPowerAlertKey: @NO}];
+    NSMutableDictionary *options = [[NSMutableDictionary alloc] init];
+    options[CBCentralManagerOptionShowPowerAlertKey] = @NO;
 
+    NSDictionary *pluginSettings = [[self commandDelegate] settings];
+    NSString *enableState = pluginSettings[@"bluetooth_restore_state"];
+    if (![self isFalsey:enableState]) {
+        NSString *restoreIdentifier = [@"true" isEqualToString:[enableState lowercaseString]]
+            ? [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleIdentifier"]
+            : enableState;
+        options[CBCentralManagerOptionRestoreIdentifierKey] = restoreIdentifier;
+    }
+
+    peripherals = [NSMutableSet new];
+    manager = [[CBCentralManager alloc] initWithDelegate:self queue:nil options:options];
+
+    restoredState = nil;
     connectCallbacks = [NSMutableDictionary new];
     connectCallbackLatches = [NSMutableDictionary new];
     readCallbacks = [NSMutableDictionary new];
@@ -47,6 +61,7 @@
     notificationCallbacks = [NSMutableDictionary new];
     startNotificationCallbacks = [NSMutableDictionary new];
     stopNotificationCallbacks = [NSMutableDictionary new];
+    l2CapContexts = [NSMutableDictionary new];
     bluetoothStates = [NSDictionary dictionaryWithObjectsAndKeys:
                        @"unknown", @(CBCentralManagerStateUnknown),
                        @"resetting", @(CBCentralManagerStateResetting),
@@ -56,16 +71,67 @@
                        @"on", @(CBCentralManagerStatePoweredOn),
                        nil];
     readRSSICallbacks = [NSMutableDictionary new];
+    
+//    SigDataSource *sigDataSource = [[SigDataSource alloc] init];
+    SigDataSource.share.delegate = self;
 }
 
 #pragma mark - Cordova Plugin Methods
 
-// TODO add timeout
+- (void)centralManager:(CBCentralManager *)central willRestoreState:(NSDictionary<NSString *,id> *)state {
+    restoredState = state;
+}
+
+- (void)restoredBluetoothState:(CDVInvokedUrlCommand *)command {
+    NSMutableDictionary *state = [[NSMutableDictionary alloc] init];
+
+    if (restoredState) {
+        NSArray *restoredPeripherals = restoredState[CBCentralManagerRestoredStatePeripheralsKey];
+        if (restoredPeripherals != nil) {
+            NSMutableArray *peripherals = [NSMutableArray arrayWithCapacity:[restoredPeripherals count]];
+            for (id peripheral in restoredPeripherals) {
+                [peripherals addObject:[peripheral asDictionary]];
+            }
+
+            state[@"peripherals"] = peripherals;
+        }
+
+        NSArray *restoredScanServices = restoredState[CBCentralManagerRestoredStateScanServicesKey];
+        if (restoredScanServices != nil) {
+            NSMutableArray *uuids = [NSMutableArray arrayWithCapacity:[restoredScanServices count]];
+            for (id uuid in restoredScanServices) {
+                [uuids addObject:[uuid UUIDString]];
+            }
+            
+            state[@"scanServiceUUIDs"] = uuids;
+        }
+
+        if (restoredState[CBCentralManagerRestoredStateScanOptionsKey]) {
+            state[@"scanOptions"] = restoredState[CBCentralManagerRestoredStateScanOptionsKey];
+        }
+    }
+
+    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
+                                                  messageAsDictionary:state];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
 - (void)connect:(CDVInvokedUrlCommand *)command {
     NSLog(@"connect");
-    NSString *uuid = [command argumentAtIndex:0];
+    if ([manager state] != CBManagerStatePoweredOn) {
+        NSString *error = @"Bluetooth is disabled";
+        NSLog(@"%@", error);
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                          messageAsString:error];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
+    }
 
+    NSString *uuid = [command argumentAtIndex:0];
     CBPeripheral *peripheral = [self findPeripheralByUUID:uuid];
+    if (!peripheral) {
+        peripheral = [self retrievePeripheralWithUUID:uuid];
+    }
 
     if (peripheral) {
         NSLog(@"Connecting to peripheral with UUID : %@", uuid);
@@ -86,9 +152,21 @@
 // If not scanning, try connectedPeripheralsWIthServices or peripheralsWithIdentifiers
 - (void)autoConnect:(CDVInvokedUrlCommand *)command {
     NSLog(@"autoConnect");
+    if ([manager state] != CBManagerStatePoweredOn) {
+        NSString *error = @"Bluetooth is disabled";
+        NSLog(@"%@", error);
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                          messageAsString:error];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
+    }
+
     NSString *uuid = [command argumentAtIndex:0];
     
     CBPeripheral *peripheral = [self findPeripheralByUUID:uuid];
+    if (!peripheral) {
+        peripheral = [self retrievePeripheralWithUUID:uuid];
+    }
     
     if (peripheral) {
         NSLog(@"Autoconnecting to peripheral with UUID : %@", uuid);
@@ -156,9 +234,9 @@
 // write: function (device_id, service_uuid, characteristic_uuid, value, success, failure) {
 - (void)write:(CDVInvokedUrlCommand*)command {
     BLECommandContext *context = [self getData:command prop:CBCharacteristicPropertyWrite];
-    NSData *message = [command argumentAtIndex:3]; // This is binary
+    id message = [self tryDecodeBinaryData:[command argumentAtIndex:3]]; // This should be binary
     if (context) {
-        if (message != nil) {
+        if (message != nil && [message isKindOfClass:[NSData class]]) {
             CBPeripheral *peripheral = [context peripheral];
             if ([peripheral state] != CBPeripheralStateConnected) {
                 CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Peripheral is not connected"];
@@ -174,6 +252,11 @@
             [peripheral writeValue:message forCharacteristic:characteristic type:CBCharacteristicWriteWithResponse];
 
             // response is sent from didWriteValueForCharacteristic
+        } else if (message != nil) {
+            // #897: some alternative BLE plugins expect a string rather than array buffer, so this is a common misuse
+            CDVPluginResult *pluginResult = nil;
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"message was not ArrayBuffer"];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         } else {
             CDVPluginResult *pluginResult = nil;
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"message was null"];
@@ -187,11 +270,10 @@
     NSLog(@"writeWithoutResponse");
 
     BLECommandContext *context = [self getData:command prop:CBCharacteristicPropertyWriteWithoutResponse];
-    NSData *message = [command argumentAtIndex:3]; // This is binary
-
+    id message = [self tryDecodeBinaryData:[command argumentAtIndex:3]]; // This should be binary
     if (context) {
         CDVPluginResult *pluginResult = nil;
-        if (message != nil) {
+        if (message != nil && [message isKindOfClass:[NSData class]]) {
             CBPeripheral *peripheral = [context peripheral];
             if ([peripheral state] != CBPeripheralStateConnected) {
                 CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Peripheral is not connected"];
@@ -201,7 +283,7 @@
             CBCharacteristic *characteristic = [context characteristic];
 
             int count = 0;
-            int dataLen = (int) message.length;
+            int dataLen = (int) sizeof(message);
             if(dataLen>20){
                 do{
                     [peripheral writeValue:[message subdataWithRange:NSMakeRange(count, dataLen-count<20?dataLen-count:20)] forCharacteristic:characteristic type:CBCharacteristicWriteWithoutResponse];
@@ -213,6 +295,9 @@
             }
 
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+        } else if (message != nil) {
+            // #897: some alternative BLE plugins expect a string rather than array buffer, so this is a common misuse
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"message was not ArrayBuffer"];
         } else {
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"message was null"];
         }
@@ -281,8 +366,892 @@
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
+- (void)updateMeshOnlineStatuses:(UInt16)meshAddress withAttribute:(NSString *)attribute value:(id)value {
+    if (!self.meshOnlineStatuses[@(meshAddress)]) {
+        self.meshOnlineStatuses[@(meshAddress)] = [NSMutableDictionary dictionary];
+    }
+    self.meshOnlineStatuses[@(meshAddress)][attribute] = value;
+}
+
+- (NSArray *)meshOnlineStatusToArray {
+    NSMutableArray *resultArray = [NSMutableArray array];
+    
+    [self.meshOnlineStatuses enumerateKeysAndObjectsUsingBlock:^(NSNumber *meshAddress, NSMutableDictionary *attributes, BOOL *stop) {
+        NSMutableDictionary *destinationObject = [NSMutableDictionary dictionaryWithDictionary:attributes];
+        destinationObject[@"meshAddress"] = meshAddress;
+        [resultArray addObject:destinationObject];
+    }];
+    
+    return [resultArray copy];  // Return immutable copy
+}
+
+- (void)mesh_initialize:(CDVInvokedUrlCommand*)command {
+    NSLog(@"mesh_initialize");
+    _meshOnlineStatuses = [NSMutableDictionary dictionary];
+    _lastAllPingTime = 0;
+    [SDKLibCommand startMeshSDKWithCallback:^(BOOL success) {
+        CDVPluginResult *pluginResult = nil;
+        if (success == YES) {
+            [self mesh_autoConnect: command];
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+
+           [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        else {
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+    }];
+}
+
+- (void)mesh_autoConnect:(CDVInvokedUrlCommand *)command {
+    if ([SDKLibCommand isBLEInitFinish]) {
+        [SDKLibCommand startMeshConnectWithComplete:^(BOOL successful) {
+            if (successful) {
+                NSLog(@"mesh_autoconnect success");
+            }
+            CDVPluginResult *pluginResult = nil;
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+
+           [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+            
+            [SDKLibCommand genericOnOffGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:0 successCallback:^(UInt16 source, UInt16 destination, SigGenericOnOffStatus * _Nonnull responseMessage) {} resultCallback:^(BOOL isResponseAll, NSError * _Nullable error){}];
+            [SDKLibCommand genericLevelGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:0 successCallback:^(UInt16 source, UInt16 destination, SigGenericLevelStatus * _Nonnull responseMessage) {} resultCallback:^(BOOL isResponseAll, NSError * _Nullable error){}];
+            self.lastAllPingTime = [[NSDate date] timeIntervalSince1970];
+        }];
+    }
+}
+- (void)mesh_onoffstatus:(CDVInvokedUrlCommand *)command {
+    NSLog(@"mesh_onoffstatus");
+    
+    NSTimeInterval currentTime = [[NSDate date] timeIntervalSince1970];
+    
+    NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
+    [self meshOnlineStatusToArray], @"devices",
+    nil];
+    CDVPluginResult *pluginResult = nil;
+    [pluginResult setKeepCallbackAsBool:true];
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    NSNumber* force = [command argumentAtIndex:0];
+    if (currentTime - _lastAllPingTime >= 60.0 || [force unsignedShortValue] == 1) { //call max once in 60 secs
+        NSLog(@"Function called at %@", [NSDate date]);
+        _lastAllPingTime = currentTime;
+        
+        if (SigMeshLib.share.isBusyNow) {
+            TeLogInfo(@"send request for onlinestatus, but busy now.");
+            return;
+        } else {
+            TeLogInfo(@"send request for onlinestatus");
+            
+            __block BOOL onOffRespComplete = NO;
+            __block BOOL lumRespComplete = NO;
+//            tem is used to wait for number of devices, as an argument to responseMaxCount, 0 is making the performace faster, as its not waiting for anything. So removing this block now
+//            int tem = 0;
+//            NSArray *curNodes = [NSArray arrayWithArray:SigDataSource.share.curNodes];
+//            for (SigNodeModel *node in curNodes) {
+//                if (!node.isSensor && !node.isRemote && node.isKeyBindSuccess) {
+//                    tem++;
+//                }
+//            }
+//            if (tem > 10) {
+//                tem = 10;
+//            }
+            
+            
+            NSMutableArray *onlineDevicesArray = [NSMutableArray array];
+            [SDKLibCommand genericOnOffGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:0 successCallback:^(UInt16 source, UInt16 destination, SigGenericOnOffStatus * _Nonnull responseMessage) {
+                if (responseMessage.isOn == YES || responseMessage.isOn == NO) {
+                    BOOL sendResponse = YES;
+                    NSDictionary *innerDict = [self->_meshOnlineStatuses objectForKey:@(source)];
+                    if (innerDict) {
+                        BOOL previousOnOff = [innerDict objectForKey:@"onOff"];
+                        BOOL previousOnline = [innerDict objectForKey:@"isOnline"];
+                        if (responseMessage.isOn == previousOnOff && previousOnline == YES) {
+                            sendResponse = NO;
+                        }
+                    }
+                    
+                    [self updateMeshOnlineStatuses:source withAttribute:@"onOff" value: @(responseMessage.isOn)];
+                    [self updateMeshOnlineStatuses:source withAttribute:@"isOnline" value: @(YES)];
+                    
+                    if (sendResponse) {
+                        CDVPluginResult *pluginResult = nil;
+                        
+                        NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                 [self meshOnlineStatusToArray], @"devices",
+                                                 nil];
+                        [pluginResult setKeepCallbackAsBool:true];
+                        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
+                        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                        NSNumber *numberValue = @(source);
+                        if (![onlineDevicesArray containsObject:numberValue]) {
+                            [onlineDevicesArray addObject:numberValue];
+                        }
+                    }
+                }
+            } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
+                if (error) {
+                    TeLogDebug(@"error getting onOff Status");
+                }
+                TeLogDebug(@"getOnlineStatus finish.");
+                CDVPluginResult *pluginResult = nil;
+                
+                [self.meshOnlineStatuses enumerateKeysAndObjectsUsingBlock:^(NSNumber *meshAddress, NSMutableDictionary *attributes, BOOL *stop) {
+                    if ([meshAddress isKindOfClass:[NSNumber class]]) {
+                        BOOL found = NO;
+                        for (NSNumber *number in onlineDevicesArray) {
+                            if (meshAddress == number) {
+                                found = YES;
+                            }
+                        }
+                        if (found == NO) {
+                            [self updateMeshOnlineStatuses:meshAddress withAttribute:@"isOnline" value: @(NO)];
+                        }
+                    }
+                }];
+                
+                NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
+                                         [self meshOnlineStatusToArray], @"devices",
+                                         nil];
+                if (!lumRespComplete) {
+                    [pluginResult setKeepCallbackAsBool:true];
+                }
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
+                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                onOffRespComplete = YES;
+                
+            }];
+            
+            NSMutableArray *onlineDevicesArray2 = [NSMutableArray array];
+            [SDKLibCommand genericLevelGetWithDestination:kMeshAddress_allNodes retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:0 successCallback:^(UInt16 source, UInt16 destination, SigGenericLevelStatus * _Nonnull responseMessage) {
+//                NSData* data = [responseMessage parameters];
+//                UInt16 presentLightness;
+//                [data getBytes:&presentLightness range:NSMakeRange(0, 2)];
+//                UInt16 targetLightness100 = (presentLightness / 65535.0) * 100;
+                
+                SInt16 level = 0;
+                if (responseMessage.remainingTime) {
+                    level = responseMessage.targetLevel;
+                } else {
+                    level = responseMessage.level;
+                }
+                UInt8 targetLightness100 = [SigHelper.share getUInt8LumFromSInt16Level:level];
+                
+                
+                BOOL sendResponse = YES;
+                NSDictionary *innerDict = [self->_meshOnlineStatuses objectForKey:@(source)];
+                if (innerDict) {
+                    BOOL previousLum = [innerDict objectForKey:@"lum"];
+                    BOOL previousOnline = [innerDict objectForKey:@"isOnline"];
+                    if (targetLightness100 == previousLum && previousOnline == YES) {
+                        sendResponse = NO;
+                    }
+                }
+                
+                [self updateMeshOnlineStatuses:source withAttribute:@"lum" value: @(targetLightness100)];
+                [self updateMeshOnlineStatuses:source withAttribute:@"isOnline" value: @(YES)];
+                
+                if (sendResponse) {
+                    CDVPluginResult *pluginResult = nil;
+                    
+                    NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
+                                             [self meshOnlineStatusToArray], @"devices",
+                                             nil];
+                    [pluginResult setKeepCallbackAsBool:true];
+                    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
+                    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                    NSNumber *numberValue = @(source);
+                    if (![onlineDevicesArray2 containsObject:numberValue]) {
+                        [onlineDevicesArray2 addObject:numberValue];
+                    }
+                }
+                
+            } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
+                if (error) {
+                    TeLogDebug(@"error getting onOff Status");
+                }
+                TeLogDebug(@"getOnlineStatus finish.");
+                CDVPluginResult *pluginResult = nil;
+                
+                [self.meshOnlineStatuses enumerateKeysAndObjectsUsingBlock:^(NSNumber *meshAddress, NSMutableDictionary *attributes, BOOL *stop) {
+                    if ([meshAddress isKindOfClass:[NSNumber class]]) {
+                        BOOL found = NO;
+                        for (NSNumber *number in onlineDevicesArray2) {
+                            if (meshAddress == number) {
+                                found = YES;
+                            }
+                        }
+                        if (found == NO) {
+                            [self updateMeshOnlineStatuses:[meshAddress unsignedShortValue] withAttribute:@"isOnline" value: @(NO)];
+                        }
+                    }
+                }];
+                
+                NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
+                                         [self meshOnlineStatusToArray], @"devices",
+                                         nil];
+                
+                if (!onOffRespComplete) {
+                    [pluginResult setKeepCallbackAsBool:true];
+                }
+                
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
+                
+                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                
+                lumRespComplete = YES;
+                
+            }];
+        }
+    }
+}
+
+- (void)mesh_sendCTLCommand:(CDVInvokedUrlCommand *)command {
+    NSString* unicastaddress = [command argumentAtIndex:0];
+    NSString* ctl = [command argumentAtIndex:2];
+    NSNumberFormatter* formatter = [[NSNumberFormatter alloc] init];
+    UInt16 addr = [[formatter numberFromString:unicastaddress] unsignedShortValue];
+    UInt16 ctlness = [[formatter numberFromString:ctl] unsignedShortValue];
+    [SDKLibCommand lightCTLTemperatureSetWithDestination:addr temperature:ctlness deltaUV:0 retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:1 ack:YES successCallback:^(UInt16 source, UInt16 destination, SigLightCTLTemperatureStatus * _Nonnull responseMessage) {
+        
+    } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
+        if (isResponseAll) {
+            TeLogDebug(@"ctlness success.");
+            NSMutableArray<NSDictionary *> *connected = [NSMutableArray new];
+            CDVPluginResult *pluginResult = nil;
+//            NSData *data = [SigDataSource.share getLocationMeshData];
+//            NSDictionary *meshDict = [LibTools getDictionaryWithJSONData:data];
+            NSArray *curNodes = [NSArray arrayWithArray:SigDataSource.share.curNodes];
+//                       NSError * err;
+//                       NSData * jsonData = [NSJSONSerialization dataWithJSONObject:curNodes options:0 error:&err];
+        //                                [self setDictionaryToDataSource:meshDict];
+            for (SigNodeModel *node in curNodes) {
+                BOOL onOff;
+                BOOL isOnline = NO;
+                if(node.state == DeviceStateOutOfLine){
+                    isOnline = NO;
+                }
+                if(node.state == DeviceStateOn){
+                    onOff = YES;
+                    isOnline = YES;
+                } else {
+                    onOff = NO;
+                }
+                NSDictionary *device = [NSDictionary dictionaryWithObjectsAndKeys:
+                 [NSNumber numberWithInt:node.address], @"meshAddress",
+                 [NSNumber numberWithBool:onOff] ,@"onOff",
+                 [NSNumber numberWithBool:isOnline], @"isOnline", nil];
+                [connected addObject:device];
+            }
+           // NSLog(@"mesh_Devices",connected);
+            NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
+            connected, @"devices",
+            nil];
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
+          
+           [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        } else {
+            TeLogDebug(@"ctl fail.");
+        }
+    }];
+}
+
+- (void)mesh_sendLightnessCommand:(CDVInvokedUrlCommand *)command {
+    if (!SigBearer.share.isOpen) {
+        CDVPluginResult *pluginResult = nil;
+        NSDictionary *response = [NSDictionary dictionaryWithObjectsAndKeys:
+        @(0), @"success",
+        @(0), @"proxy",
+        nil];
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:response];
+    }
+    else {
+        NSNumber* unicastaddress = [command argumentAtIndex:0];
+        NSNumber* light = [command argumentAtIndex:2];
+        UInt16 addr = [unicastaddress unsignedShortValue];
+        UInt16 lightness255 = [light unsignedShortValue];
+        UInt16 lightness = (UInt16)(((float)lightness255 / 255.0) * 65535);
+        __block BOOL responseSent = NO;
+        [SDKLibCommand lightLightnessSetWithDestination:addr lightness:lightness retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:1 ack:YES successCallback:^(UInt16 source, UInt16 destination, SigLightLightnessStatus * _Nonnull responseMessage) {
+            NSData* data = [responseMessage parameters];
+            UInt16 targetLightness;
+            [data getBytes:&targetLightness range:NSMakeRange(0, 2)];
+            UInt16 targetLightness100 = (targetLightness / 65535.0) * 100;
+            [self updateMeshOnlineStatuses:source withAttribute:@"lum" value: @(targetLightness100)];
+            [self updateMeshOnlineStatuses:source withAttribute:@"isOnline" value: @(YES)];
+            if (source == addr && responseSent == NO) {
+                CDVPluginResult *pluginResult = nil;
+                NSDictionary *response = [NSDictionary dictionaryWithObjectsAndKeys:
+                                          @(1), @"success",
+                                          nil];
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:response];
+                
+                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                responseSent = YES;
+            }
+        } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
+            if (error) {
+                TeLogDebug(@"onoff fail.");
+                CDVPluginResult *pluginResult = nil;
+                NSDictionary *response = [NSDictionary dictionaryWithObjectsAndKeys:
+                                          @(0), @"success",
+                                          nil];
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:response];
+                responseSent = YES;
+            }
+            if (responseSent == NO) {
+                CDVPluginResult *pluginResult = nil;
+                NSDictionary *response = [NSDictionary dictionaryWithObjectsAndKeys:
+                                          @(1), @"success",
+                                          nil];
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:response];
+                
+                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+
+            }
+        }];
+    }
+}
+
+
+- (void)mesh_sendOnOffCommand:(CDVInvokedUrlCommand *)command {
+    
+    if (!SigBearer.share.isOpen) {
+        CDVPluginResult *pluginResult = nil;
+        NSDictionary *response = [NSDictionary dictionaryWithObjectsAndKeys:
+        @(0), @"success",
+        @(0), @"proxy",
+        nil];
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:response];
+    }
+    else {
+        NSNumber* unicastaddress = [command argumentAtIndex:0];
+        NSNumber* onOff = [command argumentAtIndex:2];
+        UInt16 addr = [unicastaddress unsignedShortValue];
+        BOOL isOn = [onOff boolValue];
+        __block BOOL responseSent = NO;
+        [SDKLibCommand genericOnOffSetWithDestination:addr isOn:isOn retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:1 ack:YES successCallback:^(UInt16 source, UInt16 destination, SigGenericOnOffStatus * _Nonnull responseMessage) {
+            //界面刷新统一在SDK回调函数didReceiveMessage:中进行
+            TeLogDebug(@"onoff success.");
+            [self updateMeshOnlineStatuses:source withAttribute:@"onOff" value: @(responseMessage.isOn)];
+            [self updateMeshOnlineStatuses:source withAttribute:@"isOnline" value: @(YES)];
+            if (source == addr && responseSent == NO) {
+                CDVPluginResult *pluginResult = nil;
+                NSDictionary *response = [NSDictionary dictionaryWithObjectsAndKeys:
+                                          @(1), @"success",
+                                          nil];
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:response];
+                
+                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                responseSent = YES;
+            }
+        } resultCallback:^(BOOL isResponseAll, NSError * _Nonnull error) {
+            if (error) {
+                TeLogDebug(@"onoff fail.");
+                CDVPluginResult *pluginResult = nil;
+                NSDictionary *response = [NSDictionary dictionaryWithObjectsAndKeys:
+                                          @(0), @"success",
+                                          nil];
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:response];
+                responseSent = YES;
+            }
+            if (responseSent == NO) {
+                CDVPluginResult *pluginResult = nil;
+                NSDictionary *response = [NSDictionary dictionaryWithObjectsAndKeys:
+                                          @(1), @"success",
+                                          nil];
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:response];
+                
+                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+
+            }
+        }];
+    }
+}
+
+- (void)mesh_deviceOTA:(CDVInvokedUrlCommand *)command {
+    NSString* fileName = [command argumentAtIndex:0];
+    NSNumber* unicastaddress = [command argumentAtIndex:1];
+    UInt16 addr = [unicastaddress unsignedShortValue];
+    NSData *data = [[NSFileHandle fileHandleForReadingAtPath:[[NSBundle mainBundle] pathForResource:fileName ofType:@"bin"]] readDataToEndOfFile];
+    if (!data) {
+        //通过iTunes File 加入的文件
+        NSString *fileLocalPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+        NSString *name = @"1687434167523_8258_mesh_0.0.5";
+        fileLocalPath = [NSString stringWithFormat:@"%@/%@.bin",fileLocalPath,name];
+        NSError *err = nil;
+        NSFileHandle *fileHandle = [NSFileHandle fileHandleForReadingFromURL:[NSURL URLWithString:fileName] error:&err];
+        data = fileHandle.readDataToEndOfFile;
+    }
+    UInt16 pid = 0;
+       Byte *tempBytes = (Byte *)[data bytes];
+       if (data && data.length >= 4) {
+           memcpy(&pid, tempBytes + 0x2, 2);
+       }
+    SigNodeModel *node = [SigDataSource.share getNodeWithAddress:addr];
+    NSArray<SigNodeModel *> *modals = @[node];
+    [OTAManager.share startOTAWithOtaData:data models:modals singleSuccessAction:^(SigNodeModel *device) {
+        CDVPluginResult *pluginResult = nil;
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"ota_success"];
+      
+       [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        [SDKLibCommand startMeshConnectWithComplete:nil];
+            TeLogVerbose(@"otaSuccess");
+        
+    } singleFailAction:^(SigNodeModel *device) {
+        CDVPluginResult *pluginResult = nil;
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"ota_fail"];
+      
+       [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        [SDKLibCommand startMeshConnectWithComplete:nil];
+           TeLogVerbose(@"otaFail");
+        
+    } singleProgressAction:^(float progress) {
+        NSString *tips = [NSString stringWithFormat:@"OTA:%.1f%%", progress];
+        TeLogVerbose(@"otaProgress");
+        
+    } finishAction:^(NSArray<SigNodeModel *> *successModels, NSArray<SigNodeModel *> *fileModels) {
+        TeLogVerbose(@"otaDone");
+    }];
+}
+
+- (void)mesh_kickOutDevice:(CDVInvokedUrlCommand *)command {
+    NSString* unicastaddress = [command argumentAtIndex:0];
+    NSNumberFormatter* formatter = [[NSNumberFormatter alloc] init];
+    UInt16 addr = [[formatter numberFromString:unicastaddress] unsignedShortValue];
+    //NSLog(@"%@",unicastaddress);
+    //NSNumberFormatter* formatter = [ [NSNumberFormatter alloc] init];
+    //UInt16 addr = [[formatter numberFromString:unicastaddress] unsignedShortValue];
+    [SDKLibCommand resetNodeWithDestination:addr retryCount:SigDataSource.share.defaultRetryCount responseMaxCount:1 successCallback:^(UInt16 source, UInt16 destination, SigConfigNodeResetStatus * _Nonnull responseMessage) {
+
+    } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
+        if (isResponseAll) {
+            TeLogDebug(@"kickout success.");
+        } else {
+            TeLogDebug(@"kickout fail.");
+        }
+        [SigDataSource.share deleteNodeFromMeshNetworkWithDeviceAddress:addr];
+        CDVPluginResult *pluginResult = nil;
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+      
+       [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+//        dispatch_async(dispatch_get_main_queue(), ^{
+//            [NSObject cancelPreviousPerformRequestsWithTarget:weakSelf];
+//            [weakSelf pop];
+//        });
+    }];
+}
+
+- (void)mesh_provScanDevices:(CDVInvokedUrlCommand*)command {
+    NSLog(@"mesh_provScanDevices");
+    NSMutableArray<NSDictionary *> *connected = [NSMutableArray new];
+    [SDKLibCommand scanUnprovisionedDevicesWithResult:^(CBPeripheral * _Nonnull peripheral, NSDictionary<NSString *,id> * _Nonnull advertisementData, NSNumber * _Nonnull RSSI, BOOL unprovisioned){
+        if (unprovisioned) {
+            //自动添加新增逻辑：判断本地是否存在该UUID的OOB数据，存在则缓存到self.staticOOBData中。
+            SigScanRspModel *model = [SigMeshLib.share.dataSource getScanRspModelWithUUID:peripheral.identifier.UUIDString];
+            //SDK不支持CertificateBased添加时，自动扫描添加不会添加支持CertificateBased的设备。
+#if SUPPORTCARTIFICATEBASED
+#else
+            if (model.advOobInformation.supportForCertificateBasedProvisioning) {
+               
+            }
+#endif
+           // [self->peripherals addObject:peripheral];
+//            NSObject *device = [[NSObject alloc]init];
+//            device['nodeInfo'].macAddress = '';
+//            device['nodeInfo'].deviceUUID = '';
+            NSDictionary *device = [NSDictionary dictionaryWithObjectsAndKeys:
+            model.macAddress, @"macAddress",
+            model.uuid, @"deviceUUID",
+            nil];
+            NSDictionary *devicefinal = [NSDictionary dictionaryWithObjectsAndKeys:
+            device, @"nodeInfo",
+            nil];
+            [connected addObject:devicefinal];
+            NSLog(@"mesh_provScanDevices %@", connected);
+            NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
+            connected, @"devices",
+            nil];
+                CDVPluginResult *pluginResult = nil;
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
+            [pluginResult setKeepCallbackAsBool:true];
+//                NSLog(@"Connected peripherals with services %@ %@", serviceUUIDStrings, connected);
+//                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+//            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:device];
+              
+               [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+//            weakSelf.addStatus = SigAddStatusConnectFirst;
+//            [SigBluetooth.share stopScan];
+//            SigOOBModel *oobModel = [SigMeshLib.share.dataSource getSigOOBModelWithUUID:model.advUuid];
+//            if (oobModel && oobModel.OOBString && oobModel.OOBString.length == 32) {
+//                weakSelf.staticOOBData = [LibTools nsstringToHex:oobModel.OOBString];
+//            }
+//            weakSelf.isCertificateBasedProvision = model.advOobInformation.supportForCertificateBasedProvisioning;
+//            [weakSelf startAddPeripheral:peripheral];
+        }
+    }];
+    
+//    NSArray<CBPeripheral *> *connectedPeripherals = [manager retrieveConnectedPeripheralsWithServices:serviceUUIDs];
+//    NSMutableArray<NSDictionary *> *connected = [NSMutableArray new];
+//
+//    for (CBPeripheral *peripheral in connectedPeripherals) {
+//        [peripherals addObject:peripheral];
+//        [connected addObject:[peripheral asDictionary]];
+//    }
+    
+}
+
+- (void)mesh_provAddDevice:(CDVInvokedUrlCommand*)command {
+    NSLog(@"mesh_provAddDevice");
+    NSString *uuid = [command argumentAtIndex:0];
+    NSData *key = [SigDataSource.share curNetKey];
+    if (SigDataSource.share.curNetkeyModel.phase == 1) {
+        if (SigDataSource.share.curNetkeyModel.oldKey) {
+            key = [LibTools nsstringToHex:SigDataSource.share.curNetkeyModel.oldKey];
+        }
+    }
+    UInt16 provisionAddress = [SigDataSource.share provisionAddress];
+    if (provisionAddress == 0) {
+        TeLogDebug(@"warning: address has run out.");
+        //NSLog(@"%@", error);
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                          messageAsString:(@"warning: address has run out.")];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
+    }
+    //__weak typeof(self) weakSelf = self;
+    NSNumber *type = [NSNumber numberWithInteger:KeyBindType_Normal];
+    [SDKLibCommand stopMeshConnectWithComplete:^(BOOL successful) {
+        TeLogVerbose(@"successful=%d",successful);
+        if (successful) {
+            TeLogInfo(@"stop mesh success.");
+            __block UInt16 currentProvisionAddress = provisionAddress;
+            __block NSString *currentAddUUID = nil;
+            [SDKLibCommand scanUnprovisionedDevicesWithResult:^(CBPeripheral * _Nonnull curperipheral, NSDictionary<NSString *,id> * _Nonnull advertisementData, NSNumber * _Nonnull RSSI, BOOL unprovisioned){
+                if (unprovisioned) {
+                    if ([curperipheral.identifier.UUIDString isEqualToString:uuid]) {
+                        NSLog(@"mesh_provAddDevice");
+                        [SDKLibCommand startAddDeviceWithNextAddress:provisionAddress networkKey:key netkeyIndex:SigDataSource.share.curNetkeyModel.index appkeyModel:SigDataSource.share.curAppkeyModel
+                            //unicastAddress:0 uuid:uuid
+                            peripheral:curperipheral provisionType:ProvisionType_NoOOB
+                            staticOOBData:nil
+                            keyBindType:type.integerValue productID:0 cpsData:nil //isAutoAddNextDevice:NO
+                            provisionSuccess:^(NSString * _Nonnull identify, UInt16 address) {
+                            if (identify && address != 0) {
+                                currentAddUUID = identify;
+                                currentProvisionAddress = address;
+                                TeLogInfo(@"addDevice_provision success : %@->0X%X",identify,address);
+                               
+                            }
+                        } provisionFail:^(NSError * _Nonnull error) {
+                            TeLogInfo(@"addDevice provision fail error:%@",error);
+                            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                                              messageAsString:(@"warning: device provision failed.")];
+                            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                        } keyBindSuccess:^(NSString * _Nonnull identify, UInt16 address) {
+                            if (identify && address != 0) {
+                                currentProvisionAddress = address;
+                                SigNodeModel *node = [SigDataSource.share getNodeWithAddress:address];
+                                if (node && node.isRemote) {
+                                    [node addDefaultPublicAddressToRemote];
+                                    [SigDataSource.share saveLocationData];
+                                }
+//                                [weakSelf updateDeviceKeyBind:currentAddUUID address:currentProvisionAddress isSuccess:YES];
+                                TeLogInfo(@"addDevice_provision success : %@->0X%X",identify,address);
+                                CDVPluginResult *pluginResult = nil;
+                                NSData *data = [SigDataSource.share getLocationMeshData];
+                                NSDictionary *meshDict = [LibTools getDictionaryWithJSONData:data];
+                                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:meshDict];
+                               [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                            }
+                        } keyBindFail:^(NSError * _Nonnull error) {
+                            TeLogInfo(@"addDevice keybind fail error:%@",error);
+                            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                                              messageAsString:(@"warning: device provision failed.")];
+                            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                        }
+                        ];
+                        
+                    }
+                }
+            }];
+                      
+        }
+    }];
+}
+
+
+
+- (void)mesh_getMeshInfo:(CDVInvokedUrlCommand*)command {
+    NSLog(@"mesh_getMeshInfo");
+    CDVPluginResult *pluginResult = nil;
+    NSData *data = [SigDataSource.share getLocationMeshData];
+    NSDictionary *meshDict = [LibTools getDictionaryWithJSONData:data];
+    NSError * err;
+    NSData * jsonData = [NSJSONSerialization dataWithJSONObject:meshDict options:0 error:&err];
+    NSString * myString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+//                                [self setDictionaryToDataSource:meshDict];
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:myString];
+  
+   [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
+- (void)mesh_addDeviceToGroup:(CDVInvokedUrlCommand*)command {
+    NSLog(@"mesh_addDeviceToGroup");
+    NSNumber* unicastAddress = [command argumentAtIndex:0];
+    NSNumber* groupAddress = [command argumentAtIndex:1];
+    NSNumber* isAdd = [command argumentAtIndex:2];
+    NSNumber* modelIndex = [command argumentAtIndex:3];
+    NSNumber* targetElementAddress = [command argumentAtIndex:4];
+    if (SigMeshLib.share.isBusyNow) {
+        TeLogInfo(@"send request for edit subscribe list, but busy now.");
+        NSError *error = [NSError errorWithDomain:kSigMeshLibIsBusyErrorMessage code:kSigMeshLibIsBusyErrorCode userInfo:nil];
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                          messageAsString:(@"SDK is busy, because SigMeshLib.share.commands.count isn't empty.")];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
+    } else {
+        SigGroupModel *group = [SigDataSource.share getGroupModelWithGroupAddress:[groupAddress unsignedShortValue]];
+        if (!group) {
+            //create group
+            group = [SigDataSource.share addGroupWithGroupAddress: [groupAddress unsignedShortValue] parentAddress:0 groupName:@"appgrp"];
+        }
+        SigNodeModel *node = [SigDataSource.share getNodeWithAddress:[unicastAddress unsignedShortValue]];
+        UInt16 modelIdentifier;
+        BOOL modelFound = NO;
+        NSArray *elements = [NSArray arrayWithArray:node.elements];
+        for (SigElementModel *element in elements) {
+            NSArray *all = [NSArray arrayWithArray:element.models];
+            SigModelIDModel* idModel = [all objectAtIndex:[modelIndex unsignedShortValue] + 3];
+            if(idModel) {
+                modelIdentifier = idModel.getIntModelID;
+                modelFound = YES;
+                break;
+            }
+        }
+
+        if (modelFound == NO) {
+            TeLogInfo(@"send request for edit subscribe list, but modelID is not exist.");
+            NSError *error = [NSError errorWithDomain:kSigMeshLibIsBusyErrorMessage code:kSigMeshLibIsBusyErrorCode userInfo:nil];
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                              messageAsString:(@"Unknown model")];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+            return;
+        }
+
+        TeLogInfo(@"send request for edit subscribe list");
+        if ([isAdd unsignedShortValue] == 0) {
+            [SDKLibCommand configModelSubscriptionAddWithDestination:[unicastAddress unsignedShortValue] toGroupAddress:[groupAddress unsignedShortValue] elementAddress:[targetElementAddress unsignedShortValue] + [unicastAddress unsignedShortValue] modelIdentifier:modelIdentifier companyIdentifier:0 retryCount:4 responseMaxCount:1 successCallback:^(UInt16 source,UInt16 destination,SigConfigModelSubscriptionStatus *responseMessage) {
+                if (source == [unicastAddress unsignedShortValue] && responseMessage.isSuccess == YES) {
+                    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:(@"successgroup")];
+                    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                }
+            } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
+                if (error) {
+                    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                                      messageAsString:(@"failedgrp")];
+                    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                }
+                else if (isResponseAll) {
+                    NSLog(@"im here");
+                    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:(@"successgroup")];
+                    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                }
+            }];
+        } else {
+            //[SDKLibCommand configModelSubscriptionDeleteWithDestination:destination groupAddress:groupAddress elementAddress:elementAddress modelIdentifier:modelIdentifier companyIdentifier:companyIdentifier retryCount:retryCount responseMaxCount:responseMaxCount successCallback:successCallback resultCallback:resultCallback];
+            
+            [SDKLibCommand configModelSubscriptionDeleteWithDestination:[unicastAddress unsignedShortValue] groupAddress:[groupAddress unsignedShortValue] elementAddress:[targetElementAddress unsignedShortValue] + [unicastAddress unsignedShortValue] modelIdentifier:modelIdentifier companyIdentifier:0 retryCount:4 responseMaxCount:1 successCallback:^(UInt16 source,UInt16 destination,SigConfigModelSubscriptionStatus *responseMessage) {
+                if (source == [unicastAddress unsignedShortValue] && responseMessage.isSuccess == YES) {
+                    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:(@"successgroup")];
+                    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                }
+            } resultCallback:^(BOOL isResponseAll, NSError * _Nullable error) {
+                if (error) {
+                    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                                      messageAsString:(@"failedgrp")];
+                    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                }
+                else if (isResponseAll) {
+                    NSLog(@"im here");
+                    CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:(@"successgroup")];
+                    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                }
+            }];
+        }
+
+        return;
+    }
+    
+}
+
+
+- (void)mesh_importMeshInfo:(CDVInvokedUrlCommand*)command {
+    NSLog(@"mesh_importMeshInfo");
+    NSString *meshinfo = [command argumentAtIndex:0];
+    NSDictionary *dict = [LibTools getDictionaryWithJsonString:meshinfo];
+    BOOL result = dict != nil;
+    CDVPluginResult *pluginResult = nil;
+    if (result) {
+       // TeLogDebug(@"%@",tipString);
+        NSString *oldMeshUUID = SigDataSource.share.meshUUID;
+        [SigDataSource.share setDictionaryToDataSource:dict];
+        BOOL needChangeProvisionerAddress = NO;//修改手机本地节点的地址
+        BOOL reStartSequenceNumber = NO;//修改手机本地节点使用的发包序列号sno
+        BOOL hasPhoneUUID = NO;
+        NSString *curPhoneUUID = [SigDataSource.share getCurrentProvisionerUUID];
+        NSArray *provisioners = [NSArray arrayWithArray:SigDataSource.share.provisioners];
+        for (SigProvisionerModel *provision in provisioners) {
+            if ([provision.UUID isEqualToString:curPhoneUUID]) {
+                hasPhoneUUID = YES;
+                break;
+            }
+        }
+        
+        [SigDataSource.share checkExistLocationProvisioner];
+        if (hasPhoneUUID) {
+            // v3.1.0, 存在
+            BOOL isSameMesh = [SigDataSource.share.meshUUID isEqualToString:oldMeshUUID];
+            if (isSameMesh) {
+                // v3.1.0, 存在，且为相同mesh网络，覆盖JSON，且使用本地的sno和ProvisionerAddress
+                needChangeProvisionerAddress = NO;
+                reStartSequenceNumber = NO;
+            } else {
+                // v3.1.0, 存在，但为不同mesh网络，获取provision，修改为新的ProvisionerAddress，sno从0开始
+                needChangeProvisionerAddress = YES;
+                reStartSequenceNumber = YES;
+            }
+        } else {
+            // v3.1.0, 不存在，覆盖并新建provisioner
+            needChangeProvisionerAddress = NO;
+            reStartSequenceNumber = YES;
+        }
+        //重新计算sno
+//        if (reStartSequenceNumber) {
+//            [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCurrentMeshProvisionAddress_key];
+//            [SigDataSource.share setLocationSno:0];
+//        }
+        UInt16 maxAddr = SigDataSource.share.curProvisionerModel.allocatedUnicastRange.firstObject.lowIntAddress;
+        NSArray *nodes = [NSArray arrayWithArray:SigDataSource.share.nodes];
+        for (SigNodeModel *node in nodes) {
+            NSInteger curMax = node.address + node.elements.count - 1;
+            if (curMax > maxAddr) {
+                maxAddr = curMax;
+            }
+        }
+        if (needChangeProvisionerAddress) {
+            //修改手机的本地节点的地址
+            UInt16 newProvisionAddress = maxAddr + 1;
+            [SigDataSource.share changeLocationProvisionerNodeAddressToAddress:newProvisionAddress];
+            TeLogDebug(@"已经使用了address=0x%x作为本地地址",newProvisionAddress);
+            //修改已经使用的设备地址
+            [SigDataSource.share saveLocationProvisionAddress:newProvisionAddress];
+        } else {
+            //修改已经使用的设备地址
+            [SigDataSource.share saveLocationProvisionAddress:maxAddr];
+        }
+        TeLogDebug(@"下一次添加设备可以使用的地址address=0x%x",SigDataSource.share.provisionAddress);
+        
+    //    SigDataSource.share.curNetkeyModel = nil;
+    //    SigDataSource.share.curAppkeyModel = nil;
+        [SigDataSource.share saveLocationData];
+        [SigDataSource.share.scanList removeAllObjects];
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    } else {
+        NSString *tipString = [NSString stringWithFormat:@"import fail!"];
+        TeLogDebug(@"%@",tipString);
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:tipString];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
+    }
+
+}
+
+- (void) mesh_registerNetworkInfoCallback: (CDVInvokedUrlCommand *) command {
+    _commandForSeqNumberUpdate = command;
+}
+
+- (void) onSequenceNumberUpdate: (UInt32)sequenceNumber ivIndexUpdate:(UInt32)ivIndex {
+    if (_commandForSeqNumberUpdate) {
+        NSString *responseString = [NSString stringWithFormat:@"{\"ivIndex\": %u, \"sequenceNumber\": %u}",(unsigned int)ivIndex, sequenceNumber];
+        CDVPluginResult *pluginResult = nil;
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:responseString];
+        [pluginResult setKeepCallbackAsBool:TRUE];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:_commandForSeqNumberUpdate.callbackId];
+    }
+}
+
+- (void) mesh_updateIvIndexAndSeqNumber: (CDVInvokedUrlCommand *) command {
+    NSNumber *ivIndex = [command argumentAtIndex:0];
+    NSNumber *seqNumber = [command argumentAtIndex:1];
+    UInt32 currentSeqNumber = [SigDataSource.share getCurrentSequenceNumber];
+    if (currentSeqNumber != [seqNumber unsignedIntValue]) {
+        [SigDataSource.share setLocationSno:[seqNumber unsignedIntValue]];
+    }
+    if ([[NSString stringWithFormat:@"%08X", [ivIndex unsignedIntValue]] isEqualToString: [SigDataSource.share getIvIndexString]]) {
+        [SigDataSource.share updateIvIndexString: [NSString stringWithFormat:@"%08X", [ivIndex unsignedIntValue]]];
+    }
+    CDVPluginResult *pluginResult = nil;
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    
+}
+
+- (void) mesh_subscribeToMeshEvents: (CDVInvokedUrlCommand *) command {
+    [SigMeshLib.share registerSubscriberForDidReceiveMessage:^(SigMeshMessage* message, UInt16 source, UInt16 destination) {
+        NSLog(@"%d", source);
+        if ([message isKindOfClass:[SigGenericOnOffStatus class]]) {
+            SigGenericOnOffStatus *onOffMessage = (SigGenericOnOffStatus *)message;
+            if (onOffMessage.isOn == YES || onOffMessage.isOn == NO) {
+                BOOL sendResponse = YES;
+                NSDictionary *innerDict = [self->_meshOnlineStatuses objectForKey:@(source)];
+                if (innerDict) {
+                    BOOL previousOnOff = [innerDict objectForKey:@"onOff"];
+                    BOOL previousOnline = [innerDict objectForKey:@"isOnline"];
+                    if (onOffMessage.isOn == previousOnOff && previousOnline == YES) {
+                        sendResponse = NO;
+                    }
+                }
+
+                [self updateMeshOnlineStatuses:source withAttribute:@"onOff" value: @(onOffMessage.isOn)];
+                [self updateMeshOnlineStatuses:source withAttribute:@"isOnline" value: @(YES)];
+                
+                if (sendResponse) {
+                    CDVPluginResult *pluginResult = nil;
+                    
+                    NSDictionary *devices = [NSDictionary dictionaryWithObjectsAndKeys:
+                                             [self meshOnlineStatusToArray], @"devices",
+                                             nil];
+                    [pluginResult setKeepCallbackAsBool:true];
+                    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:devices];
+                    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                }
+            }
+        }
+    }];
+}
+
+- (void) mesh_unsubscribeFromMeshEvents: (CDVInvokedUrlCommand *) command {
+    [SigMeshLib.share registerSubscriberForDidReceiveMessage:nil];
+    CDVPluginResult *pluginResult = nil;
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
 - (void)scan:(CDVInvokedUrlCommand*)command {
     NSLog(@"scan");
+    if ([manager state] != CBManagerStatePoweredOn) {
+        NSString *error = @"Bluetooth is disabled";
+        NSLog(@"%@", error);
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                          messageAsString:error];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
+    }
+
     discoverPeripheralCallbackId = [command.callbackId copy];
 
     NSArray<NSString *> *serviceUUIDStrings = [command argumentAtIndex:0];
@@ -300,6 +1269,15 @@
 
 - (void)startScan:(CDVInvokedUrlCommand*)command {
     NSLog(@"startScan");
+    if ([manager state] != CBManagerStatePoweredOn) {
+        NSString *error = @"Bluetooth is disabled";
+        NSLog(@"%@", error);
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                          messageAsString:error];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
+    }
+
     discoverPeripheralCallbackId = [command.callbackId copy];
     NSArray<NSString *> *serviceUUIDStrings = [command argumentAtIndex:0];
     NSArray<CBUUID *> *serviceUUIDs = [self uuidStringsToCBUUIDs:serviceUUIDStrings];
@@ -309,6 +1287,15 @@
 
 - (void)startScanWithOptions:(CDVInvokedUrlCommand*)command {
     NSLog(@"startScanWithOptions");
+    if ([manager state] != CBManagerStatePoweredOn) {
+        NSString *error = @"Bluetooth is disabled";
+        NSLog(@"%@", error);
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                          messageAsString:error];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
+    }
+
     discoverPeripheralCallbackId = [command.callbackId copy];
     NSArray<NSString *> *serviceUUIDStrings = [command argumentAtIndex:0];
     NSArray<CBUUID *> *serviceUUIDs = [self uuidStringsToCBUUIDs:serviceUUIDStrings];
@@ -327,7 +1314,9 @@
 - (void)stopScan:(CDVInvokedUrlCommand*)command {
     NSLog(@"stopScan");
 
-    [manager stopScan];
+    if ([manager state] == CBManagerStatePoweredOn) {
+        [manager stopScan];
+    }
 
     if (discoverPeripheralCallbackId) {
         discoverPeripheralCallbackId = nil;
@@ -407,6 +1396,15 @@
 // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518924-retrieveconnectedperipheralswith?language=objc
 - (void)connectedPeripheralsWithServices:(CDVInvokedUrlCommand*)command {
     NSLog(@"connectedPeripheralsWithServices");
+    if ([manager state] != CBManagerStatePoweredOn) {
+        NSString *error = @"Bluetooth is disabled";
+        NSLog(@"%@", error);
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                                          messageAsString:error];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
+    }
+
     NSArray *serviceUUIDStrings = [command argumentAtIndex:0];
     NSArray<CBUUID *> *serviceUUIDs = [self uuidStringsToCBUUIDs:serviceUUIDStrings];
 
@@ -446,6 +1444,83 @@
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
+- (void)closeL2Cap:(CDVInvokedUrlCommand*)command {
+    NSLog(@"closeL2Cap");
+
+    NSString *uuid = [command argumentAtIndex:0];
+    NSNumber *psm = [command argumentAtIndex:1];
+    CBPeripheral *peripheral = [self findPeripheralByUUID:uuid];
+
+    if (peripheral) {
+        NSString *key = [self keyForPeripheral:peripheral andPSM:psm.unsignedShortValue];
+        BLEStreamContext *context = [l2CapContexts objectForKey:key];
+        if (context) {
+            [context closeWithReason:@"L2CAP channel closed"];
+            [l2CapContexts removeObjectForKey:key];
+        }
+        NSLog(@"Cleared callbacks for L2CAP channel key %@", key);
+    }
+    
+    CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+    [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+}
+
+- (void)openL2Cap:(CDVInvokedUrlCommand*)command {
+    NSLog(@"openL2Cap");
+
+    NSString *uuid = [command argumentAtIndex:0];
+    NSNumber *psm = [command argumentAtIndex:1];
+    CBPeripheral *peripheral = [self findPeripheralByUUID:uuid];
+
+    if (!peripheral) {
+        NSString *message = [NSString stringWithFormat:@"Peripheral %@ not found", uuid];
+        NSLog(@"%@", message);
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:message];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+
+    } else {
+        BLEStreamContext *context = [self findStreamContextFromPeripheral:peripheral andPSM:[psm unsignedShortValue]];
+        [context setConnectionStateCallbackId:[command.callbackId copy]];
+        [peripheral openL2CAPChannel:psm.unsignedShortValue];
+    }
+}
+
+- (void)receiveDataL2Cap:(CDVInvokedUrlCommand*)command {
+    NSLog(@"receiveDataL2Cap");
+
+    NSString *uuid = [command argumentAtIndex:0];
+    NSNumber *psm = [command argumentAtIndex:1];
+    CBPeripheral *peripheral = [self findPeripheralByUUID:uuid];
+
+    if (!peripheral) {
+        NSString *message = [NSString stringWithFormat:@"Peripheral %@ not found", uuid];
+        NSLog(@"%@", message);
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:message];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    } else {
+        BLEStreamContext *context = [self findStreamContextFromPeripheral:peripheral andPSM:[psm unsignedShortValue]];
+        [context setReadCallbackId:[command.callbackId copy]];
+    }
+}
+
+- (void)writeL2Cap:(CDVInvokedUrlCommand *)command {
+    NSLog(@"writeL2Cap");
+
+    NSString *uuid = [command argumentAtIndex:0];
+    NSNumber *psm = [command argumentAtIndex:1];
+    NSData *message = [command argumentAtIndex:2]; // This is binary
+    CBPeripheral *peripheral = [self findPeripheralByUUID:uuid];
+
+    if (!peripheral) {
+        NSString *message = [NSString stringWithFormat:@"Peripheral %@ not found", uuid];
+        NSLog(@"%@", message);
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:message];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    } else {
+        BLEStreamContext *context = [self findStreamContextFromPeripheral:peripheral andPSM:[psm unsignedShortValue]];
+        [context write:message callbackId:[command.callbackId copy]];
+    }
+}
 
 #pragma mark - timers
 
@@ -548,8 +1623,20 @@
     [connectCallbacks removeObjectForKey:[peripheral uuidAsString]];
     [self cleanupOperationCallbacks:peripheral withResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Peripheral disconnected"]];
 
+    NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithDictionary:[peripheral asDictionary]];
+
+    // add error info
+    [dict setObject:@"Connection Failed" forKey:@"errorMessage"];
+    if (error) {
+        [dict setObject:[error localizedDescription] forKey:@"errorDescription"];
+    }
+    // remove extra junk
+    [dict removeObjectForKey:@"rssi"];
+    [dict removeObjectForKey:@"advertising"];
+    [dict removeObjectForKey:@"services"];
+
     CDVPluginResult *pluginResult = nil;
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:[peripheral asDictionary]];
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dict];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:connectCallbackId];
 }
 
@@ -639,30 +1726,60 @@
     NSString *stopNotificationCallbackId = [stopNotificationCallbacks objectForKey:key];
 
     CDVPluginResult *pluginResult = nil;
-
-    if (!characteristic.isNotifying && stopNotificationCallbackId) {
-        if (error) {
-            NSLog(@"%@", error);
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:[error localizedDescription]];
-        } else {
+    
+    if (stopNotificationCallbackId) {
+        if (!characteristic.isNotifying) {
+            // successfully stopped notifications
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+            [notificationCallbacks removeObjectForKey:key];
+        } else {
+            if (error) {
+                // error: something went wrong
+                NSLog(@"%@", error);
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:[error localizedDescription]];
+            } else {
+                // error: still notifying
+                NSLog(@"Notifications failed to stop");
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Notifications failed to stop"];
+            }
         }
+
         [self.commandDelegate sendPluginResult:pluginResult callbackId:stopNotificationCallbackId];
         [stopNotificationCallbacks removeObjectForKey:key];
-        [notificationCallbacks removeObjectForKey:key];
-        NSAssert(![startNotificationCallbacks objectForKey:key], @"%@ existed in both start and stop notification callback dicts!", key);
     }
-    
-    if (characteristic.isNotifying && startNotificationCallbackId) {
-        if (error) {
-            NSLog(@"%@", error);
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:[error localizedDescription]];
-            [self.commandDelegate sendPluginResult:pluginResult callbackId:startNotificationCallbackId];
-            [startNotificationCallbacks removeObjectForKey:key];
-        } else {
+
+    if (startNotificationCallbackId) {
+        if (characteristic.isNotifying) {
+            // successfully started notifications
             // notification start succeeded, move the callback to the value notifications dict
             [notificationCallbacks setObject:startNotificationCallbackId forKey:key];
-            [startNotificationCallbacks removeObjectForKey:key];
+            
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"registered"];
+            [pluginResult setKeepCallbackAsBool:TRUE]; // keep for notification
+        } else {
+            if (error) {
+                // error: something went wrong
+                NSLog(@"%@", error);
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:[error localizedDescription]];
+            } else {
+                // error: not notifying
+                NSLog(@"Notifications failed to start");
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Notifications failed to start"];
+            }
+        }
+
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:startNotificationCallbackId];
+        [startNotificationCallbacks removeObjectForKey:key];
+    }
+
+    if (!characteristic.isNotifying) {
+        // characteristic is not notifying
+        NSString *notificationCallbackId = [notificationCallbacks objectForKey:key];
+        if (notificationCallbackId) {
+            // error: characteristic no longer notifying
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Characteristic not notifying"];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:startNotificationCallbackId];
+            [notificationCallbacks removeObjectForKey:key];
         }
     }
 }
@@ -712,6 +1829,24 @@
     }
 }
 
+- (void)peripheral:(CBPeripheral *)peripheral didOpenL2CAPChannel:(CBL2CAPChannel*)channel error:(NSError*)error {
+    NSLog(@"didOpenL2CAPChannel %@", channel);
+    BLEStreamContext *context = [self findStreamContextFromPeripheral:peripheral andPSM:[channel PSM]];
+    if (error) {
+        [context closeWithReason:[error localizedDescription]];
+    } else if (channel) {
+        [channel.inputStream setDelegate:context];
+        [channel.outputStream setDelegate:context];
+        [channel.inputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+        [channel.outputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+        [channel.inputStream open];
+        [channel.outputStream open];
+        [context setChannel:channel];
+    } else {
+        [context closeWithReason:@"No L2CAP channel provided"];
+    }
+}
+
 #pragma mark - internal implemetation
 
 - (CBPeripheral*)findPeripheralByUUID:(NSString*)uuid {
@@ -725,6 +1860,17 @@
             peripheral = p;
             break;
         }
+    }
+    return peripheral;
+}
+
+- (CBPeripheral*)retrievePeripheralWithUUID:(NSString*)uuid {
+    NSUUID *typedUUID = [[NSUUID alloc] initWithUUIDString:uuid];
+    NSArray *existingPeripherals = [manager retrievePeripheralsWithIdentifiers:@[typedUUID]];
+    CBPeripheral *peripheral = nil;
+    if ([existingPeripherals count] > 0) {
+        peripheral = [existingPeripherals firstObject];
+        [peripherals addObject:peripheral];
     }
     return peripheral;
 }
@@ -764,6 +1910,17 @@
         }
     }
    return nil; //Characteristic not found on this service
+}
+
+-(BLEStreamContext*) findStreamContextFromPeripheral:(CBPeripheral*)peripheral andPSM:(UInt16)psm {
+    NSString *key = [self keyForPeripheral:peripheral andPSM:psm];
+    BLEStreamContext *context = [l2CapContexts objectForKey:key];
+    if (!context) {
+        context = [BLEStreamContext alloc];
+        [context setCommandDelegate:self.commandDelegate];
+        [l2CapContexts setObject:context forKey:key];
+    }
+    return context;
 }
 
 // RedBearLab
@@ -864,6 +2021,11 @@
     return [NSString stringWithFormat:@"%@|%@|%@", [peripheral uuidAsString], [characteristic.service UUID], [characteristic UUID]];
 }
 
+-(NSString *) keyForPeripheral: (CBPeripheral *)peripheral andPSM:(UInt16)psm {
+    return [NSString stringWithFormat:@"%@|%hu", [peripheral uuidAsString], psm];
+}
+
+
 +(BOOL) isKey: (NSString *)key forPeripheral:(CBPeripheral *)peripheral {
     NSArray *keyArray = [key componentsSeparatedByString: @"|"];
     return [[peripheral uuidAsString] compare:keyArray[0]] == NSOrderedSame;
@@ -910,6 +2072,14 @@
             NSLog(@"Cleared notification callback %@ for key %@", callbackId, key);
         }
     }
+    for(id key in l2CapContexts.allKeys) {
+        if([BLECentralPlugin isKey:key forPeripheral:peripheral]) {
+            BLEStreamContext *context = [l2CapContexts valueForKey:key];
+            [context closeWithResult:result];
+            [l2CapContexts removeObjectForKey:key];
+            NSLog(@"Cleared L2CAP context for key %@", key);
+        }
+    }
 }
 
 #pragma mark - util
@@ -954,4 +2124,22 @@
     return uuids;
 }
 
+- (BOOL) isFalsey:(NSString *)value {
+    return value == nil || [value length] == 0 || [@"false" isEqualToString:[value lowercaseString]];
+}
+
+- (id) tryDecodeBinaryData:(id)value {
+    if (value != nil && [value isKindOfClass:[NSString class]]) {
+        NSData *decoded = [[NSData alloc] initWithBase64EncodedString:value options:0];
+        if (decoded != nil) {
+            return decoded;
+        }
+    }
+    return value;
+}
+
+- (void)mesh_bindDevice:(CDVInvokedUrlCommand *)command {
+}
+
 @end
+

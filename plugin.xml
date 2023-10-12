@@ -3,7 +3,7 @@
     xmlns="http://www.phonegap.com/ns/plugins/1.0"
     xmlns:android="http://schemas.android.com/apk/res/android"
     id="cordova-plugin-ble-central"
-    version="1.2.5">
+    version="1.5.2">
 
     <name>BLE</name>
     <description>Bluetooth Low Energy (BLE) Central Plugin</description>
@@ -19,9 +19,11 @@
 
     <platform name="ios">
 
+        <preference name="IOS_INIT_ON_LOAD" default="true" />
+        <preference name="BLUETOOTH_RESTORE_STATE" default="false" />
         <config-file target="config.xml" parent="/widget">
             <feature name="BLE">
-                <param name="ios-package" value="BLECentralPlugin" onload="true"/>
+                <param name="ios-package" value="BLECentralPlugin" onload="$IOS_INIT_ON_LOAD"/>
             </feature>
         </config-file>
 
@@ -34,10 +36,23 @@
         <header-file src="src/ios/BLECommandContext.h" target-dir="BLECentralPlugin" />
         <source-file src="src/ios/BLECommandContext.m" target-dir="BLECentralPlugin" />
 
+        <header-file src="src/ios/BLEStreamContext.h" target-dir="BLECentralPlugin" />
+        <source-file src="src/ios/BLEStreamContext.m" target-dir="BLECentralPlugin" />
+
+        <!-- these hooks simply copy over deps/CoolProject into the app's platforms/ios dir without integrating the files into the app's XCode project -->
+<hook type="after_plugin_install" src="scripts/ios-install.sh" />
+<hook type="before_plugin_uninstall" src="scripts/ios-uninstall.sh" />
+<!-- and this links in the copied XCode project into the app's XCode project -->
+<framework src="TelinkSigMeshLib/TelinkSigMeshLib.xcodeproj" type="projectReference"/>
+
+        <!-- <header-file src="src/ios/TelinkSigMeshLib/TelinkSigMeshLib/TelinkSigMeshLib.h" target-dir="TelinkSigMeshLib" />
+        <source-file src="src/ios/TelinkSigMeshLib/TelinkSigMeshLib.xcodeproj" target-dir="TelinkSigMeshLib" /> -->
+
         <!-- frameworks -->
         <framework src="CoreBluetooth.framework" />
+        <!-- <framework src="src/ios/TelinkSigMeshLib" /> -->
 
-        <!-- iOS SPermissions -->
+        <!-- iOS Permissions -->
         <preference name="BLUETOOTH_USAGE_DESCRIPTION" default=" " />
         <config-file target="*-Info.plist" parent="NSBluetoothPeripheralUsageDescription">
             <string>$BLUETOOTH_USAGE_DESCRIPTION</string>
@@ -45,20 +60,44 @@
         <config-file target="*-Info.plist" parent="NSBluetoothAlwaysUsageDescription">
             <string>$BLUETOOTH_USAGE_DESCRIPTION</string>
         </config-file>
+        <config-file target="config.xml" parent="/*">
+            <preference name="bluetooth_restore_state" value="$BLUETOOTH_RESTORE_STATE"/>
+        </config-file>
     </platform>
 
     <platform name="android">
+        
+        <preference name="ACCESS_BACKGROUND_LOCATION" default="false" />
+        
         <config-file target="res/xml/config.xml" parent="/widget">
             <feature name="BLE">
                 <param name="android-package" value="com.megster.cordova.ble.central.BLECentralPlugin"/>
             </feature>
         </config-file>
 
+        <framework src="src/android/plugin.gradle" custom="true" type="gradleReference"/>
+
         <config-file target="AndroidManifest.xml" parent="/manifest">
-            <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+            <!-- <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="28" /> -->
+            <!-- <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" /> -->
             <uses-permission android:name="android.permission.BLUETOOTH"/>
             <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+            <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
+
+
+            <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+            <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+            <!-- <uses-permission android:name="android.permission.BLUETOOTH" />
+            <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+            <uses-permission android:name="android.permission.BLUETOOTH_SCAN" /> -->
+            <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
         </config-file>
+
+        <config-file target="res/xml/config.xml" parent="/*">
+            <preference name="accessBackgroundLocation" value="$ACCESS_BACKGROUND_LOCATION"/>
+        </config-file>
+
+        <hook type="after_prepare" src="hooks/after_prepare.js"/>
 
         <source-file src="src/android/BLECentralPlugin.java"
             target-dir="src/com/megster/cordova/ble/central"/>
@@ -72,6 +111,40 @@
             target-dir="src/com/megster/cordova/ble/central"/>
         <source-file src="src/android/UUIDHelper.java"
             target-dir="src/com/megster/cordova/ble/central"/>
+        <source-file src="src/android/L2CAPContext.java"
+            target-dir="src/com/megster/cordova/ble/central"/>
+
+
+        <source-file src="src/android/DeviceProvisioning.java" target-dir="src/com/megster/cordova/ble/central/" />
+        <source-file src="src/android/SharedPreferenceHelper.java" target-dir="src/com/megster/cordova/ble/central/" />
+        <source-file src="src/android/TelinkBleMeshHandler.java" target-dir="src/com/megster/cordova/ble/central/" />
+        <source-file src="src/android/Util.java" target-dir="src/com/megster/cordova/ble/central/" />
+        <source-file src="src/android/model/AppSettings.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/BridgingTable.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/GroupInfo.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/MeshAppKey.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/MeshInfo.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/MeshKey.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/MeshNetKey.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/NetworkingDevice.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/NetworkingState.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/NodeInfo.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/NodeStatusChangedEvent.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/OfflineCheckTask.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/OOBPair.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/PrivateDevice.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/PublishModel.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/Scene.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/UnitConvert.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/MeshNodeStatus.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/OnlineState.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/CertCacheService.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/json/AddressRange.java" target-dir="src/com/megster/cordova/ble/central/model/json" />
+        <source-file src="src/android/model/json/MeshSecurity.java" target-dir="src/com/megster/cordova/ble/central/model/json" />
+        <source-file src="src/android/model/json/MeshStorage.java" target-dir="src/com/megster/cordova/ble/central/model/json" />
+        <source-file src="src/android/model/json/MeshStorageService.java" target-dir="src/com/megster/cordova/ble/central/model/json" />
+
+        <lib-file src="src/android/TelinkBleMeshLib/build/outputs/aar/TelinkBleMeshLib-1.0.0.aar"/>
 
     </platform>
 
