@@ -573,6 +573,7 @@ typedef enum : UInt8 {
 
 #pragma mark - API by Telink
 
+  typedef void (^initmeshCallback)(BOOL success);
 /// Get Online device, private use OnlineStatusCharacteristic(获取当前mesh网络的所有设备的在线、开关、亮度、色温状态(私有定制，需要特定的OnlineStatusCharacteristic))
 + (nullable NSError *)telinkApiGetOnlineStatueFromUUIDWithResponseMaxCount:(int)responseMaxCount successCallback:(responseGenericOnOffStatusMessageBlock)successCallback resultCallback:(resultBlock)resultCallback;
 
@@ -584,7 +585,7 @@ typedef enum : UInt8 {
 /// iniData like "a3ff000000000200ffffc21102c4020100".
 + (nullable NSError *)sendOpINIData:(NSData *)iniData successCallback:(responseAllMessageBlock)successCallback resultCallback:(resultBlock)resultCallback;
 
-+ (void)startMeshSDK;
++ (void)startMeshSDKWithCallback: (initmeshCallback) callback;
 
 + (BOOL)isBLEInitFinish;
 

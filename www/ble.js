@@ -511,8 +511,8 @@
         getMeshInfo: function getMeshInfo(params, success, failure) {
             return exec('mesh_getMeshInfo');
         },
-        onoffstatus: function onoffstatus(success, failure) {
-            cordova.exec(success, failure, pluginName, 'mesh_onoffstatus', []);
+        onoffstatus: function onoffstatus(success, failure, force) {
+            cordova.exec(success, failure, pluginName, 'mesh_onoffstatus', [force]);
         },
         importMeshInfo: function importMeshInfo(meshInfo) {
             return exec('mesh_importMeshInfo', [meshInfo]);

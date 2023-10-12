@@ -238,8 +238,37 @@
     if ([allKeys containsObject:@"timestamp"]) {
         _timestamp = dictionary[@"timestamp"];
     }
-    if ([allKeys containsObject:@"ivIndex"]) {
-        _ivIndex = dictionary[@"ivIndex"];
+    if ([allKeys containsObject:@"ivIndex"]) {        
+//        NSNumber *ivNumber = dictionary[@"ivIndex"];
+//        NSUInteger ivValue = [ivNumber unsignedIntegerValue];
+//        _ivIndex = [NSString stringWithFormat:@"%08X", ivValue];
+        
+        id ivValue = dictionary[@"ivIndex"];
+        if ([ivValue isKindOfClass:[NSNumber class]]) {
+            // Value is an NSNumber (or int when stored in the dictionary)
+            unsigned long intValue = [ivValue unsignedIntegerValue];
+            _ivIndex = [NSString stringWithFormat:@"%08X", intValue];
+        } else if ([ivValue isKindOfClass:[NSString class]]) {
+            // Value is already a string; we'll assume you want to check if it's 8 characters long
+            if ([(NSString *)ivValue length] != 8) {
+                // Handle this case as you see fit, e.g., log an error or adjust the format
+                NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+                NSNumber *numberValue = [formatter numberFromString:(NSString *)ivValue];
+                unsigned long intValue = [numberValue unsignedIntegerValue];
+                _ivIndex = [NSString stringWithFormat:@"%08X", intValue];
+            } else {
+                _ivIndex = ivValue;
+            }
+        } else {
+            // Handle other unexpected types if needed
+            NSLog(@"Unexpected type for ivIndex key: %@", [ivValue class]);
+            _ivIndex = @"00000000";
+        }
+        
+    }
+    if ([allKeys containsObject:@"sequenceNumber"]) {
+        NSUInteger seqNumber = [dictionary[@"sequenceNumber"] unsignedIntegerValue];
+        [self setLocationSno:(UInt32) seqNumber];
     }
     if ([allKeys containsObject:@"partial"]) {
         _partial = [dictionary[@"partial"] boolValue];
@@ -1059,7 +1088,8 @@
 }
 
 - (void)setLocationSno:(UInt32)sno {
-    if ((sno - _sequenceNumberOnDelegate >= self.defaultSequenceNumberIncrement) || (sno < _sequenceNumberOnDelegate)) {
+//    if ((sno - _sequenceNumberOnDelegate >= self.defaultSequenceNumberIncrement) || (sno < _sequenceNumberOnDelegate)) {
+    if ((sno - _sequenceNumberOnDelegate >= 1) || (sno < _sequenceNumberOnDelegate)) {
         self.sequenceNumberOnDelegate = sno;
         __weak typeof(self) weakSelf = self;
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -1529,6 +1559,15 @@
     return tem;
 }
 
+- (SigGroupModel *)addGroupWithGroupAddress:(UInt16)groupAddress parentAddress: (UInt16)parentAddress  groupName: (NSString*) groupName {
+    SigGroupModel *newGrp = [[SigGroupModel alloc] init];
+    newGrp.address = [NSString stringWithFormat:@"%04X", groupAddress];
+    newGrp.parentAddress = [NSString stringWithFormat:@"%04X", parentAddress];
+    newGrp.name = groupName;
+    [_groups addObject:newGrp];
+    return newGrp;
+}
+
 - (DeviceTypeModel *)getNodeInfoWithCID:(UInt16)CID PID:(UInt16)PID {
     DeviceTypeModel *model = nil;
     NSArray *defaultNodeInfos = [NSArray arrayWithArray:_defaultNodeInfos];
@@ -1593,6 +1632,15 @@
     NSData *data = [NSKeyedArchiver archivedDataWithRootObject:self.OOBList];
     [[NSUserDefaults standardUserDefaults] setObject:data forKey:kOOBStoreKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+
+- (UInt32) getCurrentSequenceNumber {
+    return _sequenceNumberOnDelegate;
+}
+
+- (NSString *) getIvIndexString {
+    return _ivIndex;
 }
 
 #pragma mark - new api since v3.3.3

@@ -493,9 +493,17 @@ static SigMeshLib *shareLib = nil;
 
 #pragma mark - SigMessageDelegate
 
+- (void) registerSubscriberForDidReceiveMessage: (SubscriberForDidReceiveMessageCallback) callback {
+    _subscriberDidReceiveMessageCb = callback;
+}
+
 - (void)didReceiveMessage:(SigMeshMessage *)message sentFromSource:(UInt16)source toDestination:(UInt16)destination {
     TeLogInfo(@"didReceiveMessage=%@,message.parameters=%@,source=0x%x,destination=0x%x", message, message.parameters, source,destination);
     SigNodeModel *node = [self.dataSource getNodeWithAddress:source];
+    
+    if (_subscriberDidReceiveMessageCb != nil) {
+        _subscriberDidReceiveMessageCb(message, source, destination);
+    }
 
     //根据设备是否打开了publish功能来判断是否给该设备添加监测离线的定时器。
     if (message.opCode == SigOpCode_lightCTLStatus || message.opCode == SigOpCode_lightHSLStatus || message.opCode == SigOpCode_lightLightnessStatus || message.opCode == SigOpCode_genericOnOffStatus) {
