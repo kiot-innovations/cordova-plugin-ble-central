@@ -7,6 +7,7 @@ import android.util.Log;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.megster.cordova.ble.central.model.AppSettings;
+import com.megster.cordova.ble.central.model.CertCacheService;
 import com.megster.cordova.ble.central.model.MeshInfo;
 import com.megster.cordova.ble.central.model.MeshNetKey;
 import com.megster.cordova.ble.central.model.NetworkingDevice;
@@ -94,11 +95,6 @@ public class DeviceProvisioning implements EventListener<String> {
   private boolean isPubSetting = false;
   private boolean isScanning = false;
 
-  /**
-   * data adapter
-   */
-//  private DeviceProvisionListAdapter mListAdapter;
-
   public void initialize(Context ctx, Context actCtx, CallbackContext callbackContext) {
     this.ctx = ctx;
     this.appCtx = actCtx;
@@ -112,7 +108,6 @@ public class DeviceProvisioning implements EventListener<String> {
     TelinkBleMeshHandler.getInstance().addEventListener(ScanEvent.EVENT_TYPE_SCAN_TIMEOUT, this);
     TelinkBleMeshHandler.getInstance().addEventListener(ScanEvent.EVENT_TYPE_DEVICE_FOUND, this);
     TelinkBleMeshHandler.getInstance().addEventListener(ModelPublicationStatusMessage.class.getName(), this);
-    startScan();
   }
 
   public void stop() {
@@ -120,7 +115,7 @@ public class DeviceProvisioning implements EventListener<String> {
    // TelinkBleMeshHandler.getInstance().removeEventListener(this);
   }
 
-  private void startScan() {
+  public void startScan() {
     isScanning = true;
     ScanParameters parameters = ScanParameters.getDefault(false, false);
     parameters.setScanTimeout(10 * 1000);
@@ -167,8 +162,6 @@ public class DeviceProvisioning implements EventListener<String> {
     else if (event.getType().equals(ScanEvent.EVENT_TYPE_SCAN_TIMEOUT)) {
        Log.w(TAG, "EVENT_TYPE_SCAN_TIMEOUT");
        onScanTimeout();
-//      enableUI(true);
-
     }
     else if (event.getType().equals(ProvisioningEvent.EVENT_TYPE_PROVISION_BEGIN)) {
       onProvisionStart((ProvisioningEvent) event);
@@ -176,16 +169,10 @@ public class DeviceProvisioning implements EventListener<String> {
       onProvisionSuccess((ProvisioningEvent) event);
     } else if (event.getType().equals(ProvisioningEvent.EVENT_TYPE_PROVISION_FAIL)) {
       onProvisionFail((ProvisioningEvent) event);
-
-      // provision next when provision failed
-      provisionNext();
     } else if (event.getType().equals(BindingEvent.EVENT_TYPE_BIND_SUCCESS)) {
       onKeyBindSuccess((BindingEvent) event);
     } else if (event.getType().equals(BindingEvent.EVENT_TYPE_BIND_FAIL)) {
       onKeyBindFail((BindingEvent) event);
-
-      // provision next when binding fail
-      provisionNext();
     } else if (event.getType().equals(ScanEvent.EVENT_TYPE_DEVICE_FOUND)) {
       AdvertisingDevice device = ((ScanEvent) event).getAdvertisingDevice();
       onDeviceFound(device);
@@ -210,8 +197,6 @@ public class DeviceProvisioning implements EventListener<String> {
     NetworkingDevice pvDevice = getCurrentDevice(NetworkingState.PROVISIONING);
     if (pvDevice == null) return;
     pvDevice.addLog(NetworkingDevice.TAG_PROVISION, "begin");
-//    updateDeviceStatus(pvDevice, MESH_EVENT_DEVICE_PROV_BEGIN);
-//    mListAdapter.notifyDataSetChanged();
   }
 
   private void onProvisionFail(ProvisioningEvent event) {
@@ -225,68 +210,65 @@ public class DeviceProvisioning implements EventListener<String> {
     pvDevice.state = NetworkingState.PROVISION_FAIL;
     pvDevice.addLog(NetworkingDevice.TAG_PROVISION, event.getDesc());
     updateDeviceStatus(pvDevice, MESH_EVENT_DEVICE_PROV_FAIL);
-//    mListAdapter.notifyDataSetChanged();
   }
 
   private void onProvisionSuccess(ProvisioningEvent event) {
-try {
-  ProvisioningDevice remote = event.getProvisioningDevice();
+    try {
+      ProvisioningDevice remote = event.getProvisioningDevice();
 
 
-  NetworkingDevice pvDevice = getCurrentDevice(NetworkingState.PROVISIONING);
-  if (pvDevice == null) {
-    MeshLogger.d("pv device not found when provision success");
-    return;
-  }
+      NetworkingDevice pvDevice = getCurrentDevice(NetworkingState.PROVISIONING);
+      if (pvDevice == null) {
+        MeshLogger.d("pv device not found when provision success");
+        return;
+      }
 
-  pvDevice.state = NetworkingState.BINDING;
-  pvDevice.addLog(NetworkingDevice.TAG_PROVISION, "success");
-  NodeInfo nodeInfo = pvDevice.nodeInfo;
-  int elementCnt = remote.getDeviceCapability().eleNum;
-  nodeInfo.elementCnt = elementCnt;
-  nodeInfo.deviceKey = remote.getDeviceKey();
-  nodeInfo.netKeyIndexes.add(TelinkBleMeshHandler.getInstance().getMeshInfo().getDefaultNetKey().index);
+      pvDevice.state = NetworkingState.BINDING;
+      pvDevice.addLog(NetworkingDevice.TAG_PROVISION, "success");
+      NodeInfo nodeInfo = pvDevice.nodeInfo;
+      int elementCnt = remote.getDeviceCapability().eleNum;
+      nodeInfo.elementCnt = elementCnt;
+      nodeInfo.deviceKey = remote.getDeviceKey();
+      nodeInfo.netKeyIndexes.add(TelinkBleMeshHandler.getInstance().getMeshInfo().getDefaultNetKey().index);
 
-  //remove the device if it already existing in the mesh with same UUID - safety
-  TelinkBleMeshHandler.getInstance().getMeshInfo().removeDeviceByUUID(nodeInfo.deviceUUID);
-  TelinkBleMeshHandler.getInstance().getMeshInfo().removeDeviceByMeshAddress(nodeInfo.meshAddress);
+      //remove the device if it already existing in the mesh with same UUID - safety
+      TelinkBleMeshHandler.getInstance().getMeshInfo().removeDeviceByUUID(nodeInfo.deviceUUID);
+      TelinkBleMeshHandler.getInstance().getMeshInfo().removeDeviceByMeshAddress(nodeInfo.meshAddress);
 
-  TelinkBleMeshHandler.getInstance().getMeshInfo().insertDevice(nodeInfo);
-  TelinkBleMeshHandler.getInstance().getMeshInfo().increaseProvisionIndex(elementCnt);
-  TelinkBleMeshHandler.getInstance().getMeshInfo().saveOrUpdate(this.ctx);
+      TelinkBleMeshHandler.getInstance().getMeshInfo().insertDevice(nodeInfo);
+      TelinkBleMeshHandler.getInstance().getMeshInfo().increaseProvisionIndex(elementCnt);
+      TelinkBleMeshHandler.getInstance().getMeshInfo().saveOrUpdate(this.ctx);
 
 
-  // check if private mode opened
-  final boolean privateMode = SharedPreferenceHelper.isPrivateMode(this.ctx);
+      // check if private mode opened
+      final boolean privateMode = SharedPreferenceHelper.isPrivateMode(this.ctx);
 
-  // check if device support fast bind
-  boolean defaultBound = false;
-  if (privateMode && remote.getDeviceUUID() != null) {
-    PrivateDevice device = PrivateDevice.filter(remote.getDeviceUUID());
-    if (device != null) {
-      MeshLogger.d("private device");
-      final byte[] cpsData = device.getCpsData();
-      nodeInfo.compositionData = CompositionData.from(cpsData);
-      defaultBound = true;
-    } else {
-      MeshLogger.d("private device null");
+      // check if device support fast bind
+      boolean defaultBound = false;
+      if (privateMode && remote.getDeviceUUID() != null) {
+        PrivateDevice device = PrivateDevice.filter(remote.getDeviceUUID());
+        if (device != null) {
+          MeshLogger.d("private device");
+          final byte[] cpsData = device.getCpsData();
+          nodeInfo.compositionData = CompositionData.from(cpsData);
+          defaultBound = true;
+        } else {
+          MeshLogger.d("private device null");
+        }
+      }
+
+      nodeInfo.setDefaultBind(defaultBound);
+      pvDevice.addLog(NetworkingDevice.TAG_BIND, "action start");
+      int appKeyIndex = TelinkBleMeshHandler.getInstance().getMeshInfo().getDefaultAppKeyIndex();
+      BindingDevice bindingDevice = new BindingDevice(nodeInfo.meshAddress, nodeInfo.deviceUUID, appKeyIndex);
+      bindingDevice.setDefaultBound(defaultBound);
+      bindingDevice.setBearer(BindingBearer.GattOnly);
+    //        bindingDevice.setDefaultBound(false);
+      MeshService.getInstance().startBinding(new BindingParameters(bindingDevice));
+
+    } catch(Exception e) {
+      Log.e("deded", e.toString());
     }
-  }
-
-  nodeInfo.setDefaultBind(defaultBound);
-  pvDevice.addLog(NetworkingDevice.TAG_BIND, "action start");
-//    mListAdapter.notifyDataSetChanged();
-  int appKeyIndex = TelinkBleMeshHandler.getInstance().getMeshInfo().getDefaultAppKeyIndex();
-  BindingDevice bindingDevice = new BindingDevice(nodeInfo.meshAddress, nodeInfo.deviceUUID, appKeyIndex);
-  bindingDevice.setDefaultBound(defaultBound);
-  bindingDevice.setBearer(BindingBearer.GattOnly);
-//        bindingDevice.setDefaultBound(false);
-  MeshService.getInstance().startBinding(new BindingParameters(bindingDevice));
-//  updateDeviceStatus(pvDevice, MESH_EVENT_DEVICE_PROV_SUCCESS);
-
-} catch(Exception e) {
-  Log.e("deded", e.toString());
-}
   }
 
   private void onKeyBindFail(BindingEvent event) {
@@ -296,7 +278,6 @@ try {
     deviceInList.state = NetworkingState.BIND_FAIL;
     deviceInList.addLog(NetworkingDevice.TAG_BIND, "failed - " + event.getDesc());
 //    updateDeviceStatus(deviceInList, MESH_EVENT_DEVICE_BIND_FAIL);
-//    mListAdapter.notifyDataSetChanged();
     TelinkBleMeshHandler.getInstance().getMeshInfo().saveOrUpdate(this.ctx);
   }
 
@@ -325,8 +306,6 @@ try {
       pvDevice.state = NetworkingState.BIND_SUCCESS;
       provisionNext();
     }
-//    updateDeviceStatus(pvDevice, MESH_EVENT_DEVICE_BIND_SUC);
-//    mListAdapter.notifyDataSetChanged();
     TelinkBleMeshHandler.getInstance().getMeshInfo().saveOrUpdate(this.ctx);
     updateDeviceStatus(pvDevice, MESH_EVENT_DEVICE_PROV_SUCCESS);
   }
@@ -366,8 +345,7 @@ try {
     processingDevice.addLog(NetworkingDevice.TAG_SCAN, "device found");
     devices.add(processingDevice);
     // TODO: ARihant
-    // Notify this to cordova -
-//    mListAdapter.notifyDataSetChanged();
+    // Notify this to cordova
     updateDevices(devices);
   }
 
@@ -390,19 +368,11 @@ try {
         }
       }
       resultObj.put("devices", devicesArray);
-      Log.d("HHHHHH", new String(String.valueOf(devicesArray.length())));
-      Log.d("HHHHHH", callbackContext.getCallbackId());
       PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, resultObj);
       pluginResult.setKeepCallback(true);
-//      new Handler().postDelayed(new Runnable() {
-//        @Override
-//        public void run() {
-          callbackContext.sendPluginResult(pluginResult);
-//        }
-//      }, 2000);
+      callbackContext.sendPluginResult(pluginResult);
 
     } catch (JSONException e) {
-//      e.printStackTrace();
       callbackContext.error(Util.makeError("JSONError", e.getMessage()));
     }
 
@@ -455,11 +425,9 @@ try {
     return null;
   }
   public void provisionNext() {
-//    enableUI(false);
     NetworkingDevice waitingDevice = getNextWaitingDevice();
     if (waitingDevice == null) {
       MeshLogger.d("no waiting device found");
-//      enableUI(true);
       return;
     }
     startProvision(waitingDevice, TelinkBleMeshHandler.getInstance().getMeshInfo().getProvisionIndex());
@@ -481,14 +449,13 @@ try {
     int address = addr;//TelinkBleMeshHandler.getInstance().getMeshInfo().getProvisionIndex();
     MeshLogger.d("alloc address: " + address);
     if (!MeshUtils.validUnicastAddress(address)) {
-//      enableUI(true);
       this.callbackContext.error(Util.makeError("1", "Invalid device to provision"));
       return;
     }
 
     byte[] deviceUUID = processingDevice.nodeInfo.deviceUUID;
     ProvisioningDevice provisioningDevice = new ProvisioningDevice(processingDevice.bluetoothDevice, processingDevice.nodeInfo.deviceUUID, address);
-//    provisioningDevice.setRootCert(CertCacheService.getInstance().getRootCert());
+    provisioningDevice.setRootCert(CertCacheService.getInstance().getRootCert());
     provisioningDevice.setOobInfo(processingDevice.oobInfo);
     processingDevice.state = NetworkingState.PROVISIONING;
     processingDevice.addLog(NetworkingDevice.TAG_PROVISION, "action start -> 0x" + String.format("%04X", address));

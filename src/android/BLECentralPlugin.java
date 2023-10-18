@@ -87,6 +87,7 @@ import com.telink.ble.mesh.entity.ProvisioningDevice;
 import com.telink.ble.mesh.foundation.Event;
 import com.telink.ble.mesh.foundation.EventListener;
 import com.telink.ble.mesh.foundation.MeshConfiguration;
+import com.telink.ble.mesh.foundation.MeshController;
 import com.telink.ble.mesh.foundation.MeshService;
 import com.telink.ble.mesh.foundation.event.AutoConnectEvent;
 import com.telink.ble.mesh.foundation.event.BindingEvent;
@@ -1448,7 +1449,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         Log.d(TAG, "mesh_stopScan");
         if (dp == null) {
             dp = new DeviceProvisioning();
-            dp.initialize(cordova.getActivity().getApplication(), cordova.getActivity(), callbackContext);
+            dp.initialize(cordova.getActivity().getApplication(), cordova.getActivity(), null);
             // TODO: we also have to destroy dp events we subscribed to.
         }
         dp.stop();
@@ -1457,7 +1458,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
     /**
      * s
      */
-    public void mesh_provScanDevices(CordovaArgs args, CallbackContext callbackContext) throws JSONException {
+    public void mesh_provScanDevices(CordovaArgs args, CallbackContext callbackContext) {
         Log.d(TAG, "mesh_provScanDevices");
         if (!PermissionHelper.hasPermission(this, ACCESS_FINE_LOCATION)) {
             // save info so we can call this method again after permissions are granted
@@ -1467,11 +1468,13 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
             PermissionHelper.requestPermission(this, REQUEST_ACCESS_FINE_LOCATION, ACCESS_FINE_LOCATION);
             return;
         }
-        dp = new DeviceProvisioning();
+        if (dp == null) {
+            dp = new DeviceProvisioning();
+            dp.initialize(cordova.getActivity().getApplication(), cordova.getActivity(), callbackContext);
+        }
         dp.stop();
-        dp.initialize(cordova.getActivity().getApplication(), cordova.getActivity(), callbackContext);
-        // TODO: we also have to destroy dp events we subscribed to.
-
+        dp.setCallbackContext(callbackContext);
+        dp.startScan();
     }
 
     public void mesh_initialize(CordovaArgs args, CallbackContext callbackContext) {
@@ -1483,18 +1486,16 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                 meshSdkInitialized = true;
                 meshHandler = new TelinkBleMeshHandler();
                 meshHandler.initialize(this.cordova.getActivity().getApplicationContext());
-                // meshHandler.addEventListener(BindingEvent.EVENT_TYPE_BIND_SUCCESS, this);
                 meshHandler.addEventListener(AutoConnectEvent.EVENT_TYPE_AUTO_CONNECT_LOGIN, this);
                 meshHandler.addEventListener(MeshEvent.EVENT_TYPE_DISCONNECTED, this);
                 meshHandler.addEventListener(NetworkInfoUpdateEvent.EVENT_TYPE_NETWORKD_INFO_UPDATE, this);
 
-                // meshHandler.addEventListener(BindingEvent.EVENT_TYPE_BIND_FAIL, this);
-                // meshHandler.addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_SUCCESS,
-                // this);
-                // meshHandler.addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_FAIL,
-                // this);
-                // meshHandler.addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_BEGIN,
-                // this);
+//                meshHandler.addEventListener(BindingEvent.EVENT_TYPE_BIND_SUCCESS, this);
+//                meshHandler.addEventListener(BindingEvent.EVENT_TYPE_BIND_FAIL, this);
+//                meshHandler.addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_SUCCESS, this);
+//                meshHandler.addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_FAIL, this);
+//                meshHandler.addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_BEGIN, this);
+
                 meshHandler.addEventListener(NodeStatusChangedEvent.EVENT_TYPE_NODE_STATUS_CHANGED, this);
                 meshHandler.addEventListener(GattOtaEvent.EVENT_TYPE_OTA_SUCCESS, this);
                 meshHandler.addEventListener(GattOtaEvent.EVENT_TYPE_OTA_PROGRESS, this);
@@ -1551,8 +1552,8 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                     address = meshHandler.getMeshInfo().getProvisionIndex();
                 }
             }
+            dp.stop();
             dp.startProvision(pvDevice, address);
-            pvDevice.state = NetworkingState.PROVISIONING;
             meshStartProvisionCallbackContext = callbackContext;
         } catch (Exception e) {
             Util.sendPluginResult(callbackContext, e.getMessage());
@@ -2229,7 +2230,9 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                     // TelinkBleMeshHandler.getInstance().setupMesh(meshInfo);
                     // meshHandler.setMeshInfo(meshInfo);
                     // MeshService.getInstance().setupMeshNetwork(meshInfo.convertToConfiguration());
-                    MeshService.getInstance().autoConnect(new AutoConnectParameters());
+                    if (MeshService.getInstance().getCurrentMode() == MeshController.Mode.IDLE) {
+                        MeshService.getInstance().autoConnect(new AutoConnectParameters());
+                    }
                 }
             }
             callbackContext.success();
@@ -2257,7 +2260,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         if (event.getType().equals(BindingEvent.EVENT_TYPE_BIND_SUCCESS)) {
             onBindSuccess((BindingEvent) event);
         } else if (event.getType().equals(BindingEvent.EVENT_TYPE_BIND_FAIL)) {
-            onBindFail((BindingEvent) event);
+//            onBindFail((BindingEvent) event);
         } else if (event.getType().equals(MeshEvent.EVENT_TYPE_DISCONNECTED)) {
             if (kickDirect) {
                 onKickOutFinish(); // TODO: Check is it something we did ? in their code they are only remoing
@@ -2273,7 +2276,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         } else if (event.getType().equals(ProvisioningEvent.EVENT_TYPE_PROVISION_SUCCESS)) {
             // onProvisionSuccess((ProvisioningEvent) event);
         } else if (event.getType().equals(ProvisioningEvent.EVENT_TYPE_PROVISION_FAIL)) {
-            onProvisionFail((ProvisioningEvent) event);
+            // onProvisionFail((ProvisioningEvent) event);
         } else if (event.getType().equals(ModelPublicationStatusMessage.class.getName())) {
             MeshLogger.d("pub setting status: " + isPubSetting);
             if (!isPubSetting) {
@@ -2558,10 +2561,10 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
 
             meshHandler.getMeshInfo().insertDevice(nodeInfo);
             meshHandler.getMeshInfo().increaseProvisionIndex(elementCnt);
-            meshHandler.getMeshInfo().saveOrUpdate(cordova.getContext());
+            meshHandler.getMeshInfo().saveOrUpdate(cordova.getActivity().getApplicationContext());
 
             // check if private mode opened
-            final boolean privateMode = SharedPreferenceHelper.isPrivateMode(cordova.getContext());
+            final boolean privateMode = SharedPreferenceHelper.isPrivateMode(cordova.getActivity().getApplicationContext());
 
             // check if device support fast bind
             boolean defaultBound = false;
@@ -2583,7 +2586,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
             BindingDevice bindingDevice = new BindingDevice(nodeInfo.meshAddress, nodeInfo.deviceUUID, appKeyIndex);
             bindingDevice.setDefaultBound(defaultBound);
             bindingDevice.setBearer(BindingBearer.GattOnly);
-            bindingDevice.setDefaultBound(false);
+//            bindingDevice.setDefaultBound(false);
             MeshService.getInstance().startBinding(new BindingParameters(bindingDevice));
         }
     }
