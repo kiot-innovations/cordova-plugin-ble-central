@@ -1,9 +1,9 @@
 {
-  "name": "cordova-plugin-ble-central",
+  "name": "kiot-cordova-plugin-ble-central",
   "version": "2.0.1",
   "description": "Bluetooth Low Energy (BLE) Central Plugin",
   "cordova": {
-    "id": "cordova-plugin-ble-central",
+    "id": "kiot-cordova-plugin-ble-central",
     "platforms": [
       "ios",
       "android",
