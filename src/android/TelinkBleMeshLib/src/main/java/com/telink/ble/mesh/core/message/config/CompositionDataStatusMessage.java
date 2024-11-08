@@ -27,6 +27,8 @@ import android.os.Parcelable;
 
 import com.telink.ble.mesh.core.message.StatusMessage;
 import com.telink.ble.mesh.entity.CompositionData;
+import com.telink.ble.mesh.util.Arrays;
+import com.telink.ble.mesh.util.MeshLogger;
 
 /**
  * The Config Composition Data Status is an unacknowledged message used to report a single page of the Composition Data
@@ -43,14 +45,25 @@ public class CompositionDataStatusMessage extends StatusMessage implements Parce
      */
     private CompositionData compositionData;
 
+    /**
+     * Constructs a new CompositionDataStatusMessage object.
+     */
     public CompositionDataStatusMessage() {
     }
 
+    /**
+     * Constructs a new CompositionDataStatusMessage object from a Parcel.
+     *
+     * @param in the Parcel object containing the CompositionDataStatusMessage data
+     */
     protected CompositionDataStatusMessage(Parcel in) {
         page = in.readByte();
         compositionData = in.readParcelable(CompositionData.class.getClassLoader());
     }
 
+    /**
+     * A Creator object that generates instances of CompositionDataStatusMessage from a Parcel.
+     */
     public static final Creator<CompositionDataStatusMessage> CREATOR = new Creator<CompositionDataStatusMessage>() {
         @Override
         public CompositionDataStatusMessage createFromParcel(Parcel in) {
@@ -63,29 +76,56 @@ public class CompositionDataStatusMessage extends StatusMessage implements Parce
         }
     };
 
+    /**
+     * Parses the parameters of the CompositionDataStatusMessage from a byte array.
+     *
+     * @param params the byte array containing the parameters of the CompositionDataStatusMessage
+     */
     @Override
     public void parse(byte[] params) {
         page = params[0];
         byte[] cpsData = new byte[params.length - 1];
         System.arraycopy(params, 1, cpsData, 0, cpsData.length);
+        MeshLogger.d("cps data - " + Arrays.bytesToHexString(cpsData));
         compositionData = CompositionData.from(cpsData);
     }
 
+    /**
+     * Describes the contents of the CompositionDataStatusMessage object.
+     *
+     * @return an integer representing the contents of the CompositionDataStatusMessage object
+     */
     @Override
     public int describeContents() {
         return 0;
     }
 
+    /**
+     * Writes the CompositionDataStatusMessage object to a Parcel.
+     *
+     * @param dest  the Parcel object to write the CompositionDataStatusMessage object to
+     * @param flags additional flags about how the object should be written
+     */
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeByte(page);
         dest.writeParcelable(compositionData, flags);
     }
 
+    /**
+     * get page
+     *
+     * @return page
+     */
     public byte getPage() {
         return page;
     }
 
+    /**
+     * get CompositionData
+     *
+     * @return CompositionData
+     */
     public CompositionData getCompositionData() {
         return compositionData;
     }

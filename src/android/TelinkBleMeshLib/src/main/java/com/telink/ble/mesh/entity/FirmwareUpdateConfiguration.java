@@ -32,10 +32,11 @@ import com.telink.ble.mesh.core.networking.ExtendBearerMode;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Created by kee on 2019/9/6.
- */
 
+/**
+ * This class represents the configuration for a firmware update.
+ * It contains various parameters and settings related to the update process.
+ */
 public class FirmwareUpdateConfiguration {
 
     /**
@@ -113,6 +114,15 @@ public class FirmwareUpdateConfiguration {
     private int proxyAddress;
 
 
+    /**
+     * Constructs a new FirmwareUpdateConfiguration object with the given parameters.
+     *
+     * @param updatingDevices The list of target devices that will be updated.
+     * @param firmwareData    The firmware data.
+     * @param metadata        The metadata associated with the firmware.
+     * @param appKeyIndex     The index of the application key to be used for the update.
+     * @param groupAddress    The group address for the subscription message.
+     */
     public FirmwareUpdateConfiguration(List<MeshUpdatingDevice> updatingDevices,
                                        byte[] firmwareData,
                                        byte[] metadata,
@@ -263,5 +273,34 @@ public class FirmwareUpdateConfiguration {
                 ", distributorAddress=" + distributorAddress +
                 ", proxyAddress=" + proxyAddress +
                 '}';
+    }
+
+    /**
+     * show on ui
+     */
+    public String getBriefDesc(ExtendBearerMode extendBearerMode) {
+        //
+        /*return "Mesh OTA Params: " + " proxyAddress=" + proxyAddress +
+                ", distributorType=" + distributorType +
+                ", extendBearerMode=" + extendBearerMode;*/
+
+        return "FU Params{" +
+                "updatingDevices=" + updatingDevices.size() +
+                ", firmwareData=" + (firmwareData == null ? 0 : firmwareData.length) +
+                ", metadata=" + Arrays.toString(metadata) +
+                ", appKeyIndex=" + appKeyIndex +
+                ", groupAddress=" + String.format("%04x", groupAddress) +
+                ", blobId=" + String.format("%16x", blobId) +
+                ", firmwareId=" + Arrays.toString(firmwareId) +
+                ", firmwareIndex=" + firmwareIndex +
+                ", distributorType=" + distributorType +
+                ", updatePolicy=" + updatePolicy +
+                ", isContinue=" + isContinue +
+                ", distributorAddress=" + String.format("%04x", distributorAddress) +
+                ", proxyAddress=" + String.format("%04x", proxyAddress) +
+                ", extendBearerMode=" + extendBearerMode +
+                '}';
+
+
     }
 }

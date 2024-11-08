@@ -4,9 +4,9 @@
  * @brief for TLSR chips
  *
  * @author telink
- * @date     Sep. 30, 2017
+ * @date Sep. 30, 2017
  *
- * @par     Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ * @par Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
  *          Licensed under the Apache License, Version 2.0 (the "License");
  *          you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@
 package com.telink.ble.mesh.foundation;
 
 import android.util.SparseArray;
+
+import com.telink.ble.mesh.core.MeshUtils;
 
 /**
  * Mesh info use when provisioning/binding/auto connecting
@@ -67,6 +69,17 @@ public class MeshConfiguration {
      */
     public SparseArray<byte[]> deviceKeyMap;
 
+    /**
+     * white list
+     * should contains localAddress{@link #localAddress} and ADDRESS_BROADCAST {@link MeshUtils#ADDRESS_BROADCAST}
+     */
+    public int[] proxyFilterWhiteList;
+
+    /**
+     * get the default application key index
+     *
+     * @return
+     */
     public int getDefaultAppKeyIndex() {
         return appKeyMap.size() > 0 ? appKeyMap.keyAt(0) : 0;
     }

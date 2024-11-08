@@ -30,8 +30,8 @@ import com.telink.ble.mesh.core.message.firmwareupdate.AdditionalInformation;
 import java.io.Serializable;
 
 /**
- * Mesh firmware updating device
- * Created by kee on 2019/10/10.
+ * This class represents a device that is capable of updating a mesh network.
+ * It implements the Serializable, Parcelable, and Cloneable interfaces.
  */
 public class MeshUpdatingDevice implements Serializable, Parcelable, Cloneable {
 
@@ -79,6 +79,9 @@ public class MeshUpdatingDevice implements Serializable, Parcelable, Cloneable {
      */
     public int pid = 0;
 
+    // version id
+    public int vid = 0;
+
     /**
      * contains firmware update models
      * and
@@ -88,13 +91,31 @@ public class MeshUpdatingDevice implements Serializable, Parcelable, Cloneable {
 
     public boolean isOnline = false;
 
+    /**
+     * Indicates if the device is selected.
+     */
     public boolean selected = false;
 
+    /**
+     * Indicates if the device is a low power node.
+     */
     public boolean isLpn = false;
 
+    public boolean isSensor = false;
+
+
+    public boolean needUpdate = false;
+    /**
+     * Default constructor for the MeshUpdatingDevice class.
+     */
     public MeshUpdatingDevice() {
     }
 
+    /**
+     * Constructor for the MeshUpdatingDevice class.
+     *
+     * @param in The parcel to read from.
+     */
     protected MeshUpdatingDevice(Parcel in) {
         meshAddress = in.readInt();
         updatingEleAddress = in.readInt();
@@ -108,6 +129,9 @@ public class MeshUpdatingDevice implements Serializable, Parcelable, Cloneable {
         isLpn = in.readByte() != 0;
     }
 
+    /**
+     * Creator for the MeshUpdatingDevice class.
+     */
     public static final Creator<MeshUpdatingDevice> CREATOR = new Creator<MeshUpdatingDevice>() {
         @Override
         public MeshUpdatingDevice createFromParcel(Parcel in) {
@@ -120,6 +144,11 @@ public class MeshUpdatingDevice implements Serializable, Parcelable, Cloneable {
         }
     };
 
+    /**
+     * Gets the description of the device's state.
+     *
+     * @return The description of the device's state.
+     */
     public String getStateDesc() {
         switch (state) {
             case STATE_INITIAL:

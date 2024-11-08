@@ -22,6 +22,7 @@
  *******************************************************************************************************/
 package com.telink.ble.mesh.core.message.privatebeacon;
 
+import com.telink.ble.mesh.core.message.Opcode;
 import com.telink.ble.mesh.core.message.config.ConfigMessage;
 
 /**
@@ -30,20 +31,32 @@ import com.telink.ble.mesh.core.message.config.ConfigMessage;
  */
 public class PrivateNodeIdentityGetMessage extends ConfigMessage {
 
-
+    /**
+     * ignore
+     * @param destinationAddress
+     */
     public PrivateNodeIdentityGetMessage(int destinationAddress) {
         super(destinationAddress);
     }
 
-
+    /**
+     * ignore
+     *
+     * @return
+     */
     @Override
     public int getOpcode() {
-        return OPCODE_INVALID;
+        return Opcode.PRIVATE_NODE_IDENTITY_GET.value;
     }
 
+    /**
+     * ignore
+     *
+     * @return
+     */
     @Override
     public int getResponseOpcode() {
-        return OPCODE_INVALID;
+        return Opcode.PRIVATE_NODE_IDENTITY_STATUS.value;
     }
 
 }

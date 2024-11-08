@@ -22,6 +22,7 @@
  *******************************************************************************************************/
 package com.telink.ble.mesh.core.message.privatebeacon;
 
+import com.telink.ble.mesh.core.message.Opcode;
 import com.telink.ble.mesh.core.message.config.ConfigMessage;
 
 /**
@@ -30,20 +31,33 @@ import com.telink.ble.mesh.core.message.config.ConfigMessage;
  */
 public class PrivateGattProxyGetMessage extends ConfigMessage {
 
-
+    /**
+     * ignore
+     *
+     * @return
+     */
     public PrivateGattProxyGetMessage(int destinationAddress) {
         super(destinationAddress);
     }
 
-
+    /**
+     * ignore
+     *
+     * @return
+     */
     @Override
     public int getOpcode() {
-        return OPCODE_INVALID;
+        return Opcode.PRIVATE_GATT_PROXY_GET.value;
     }
 
+    /**
+     * ignore
+     *
+     * @return
+     */
     @Override
     public int getResponseOpcode() {
-        return OPCODE_INVALID;
+        return Opcode.PRIVATE_GATT_PROXY_STATUS.value;
     }
 
 }

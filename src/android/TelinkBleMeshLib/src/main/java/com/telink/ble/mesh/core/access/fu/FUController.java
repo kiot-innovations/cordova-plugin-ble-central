@@ -80,6 +80,11 @@ public class FUController implements FUActionHandler {
     private List<MeshUpdatingDevice> deviceList;
 
     /**
+     * {@link FDReceiversGetMessage}
+     */
+    private int firstIndexInList = 0;
+
+    /**
      * is update running
      * valued by true when update started
      * if distribute by Device, running stopped when distribute start success;
@@ -178,7 +183,7 @@ public class FUController implements FUActionHandler {
     }
 
     private void fetchProgressState() {
-        FDReceiversGetMessage getMessage = FDReceiversGetMessage.getSimple(distributorAddress, appKeyIndex, 0, 1);
+        FDReceiversGetMessage getMessage = FDReceiversGetMessage.getSimple(distributorAddress, appKeyIndex, firstIndexInList, 1);
         onMessagePrepared(getMessage);
     }
 
@@ -214,13 +219,21 @@ public class FUController implements FUActionHandler {
                     // rebooted, check firmware
                     onFUStateUpdate(FUState.UPDATE_RECHECKING, "device may reboot complete");
                     distributorAssist.recheckFirmware(true);
-                } else if (phase == UpdatePhase.TRANSFER_ERROR.code) {
-                    onComplete(false, "phase error");
+                } else if (phase == UpdatePhase.TRANSFER_ERROR.code
+                        || phase == UpdatePhase.APPLY_FAILED.code
+                        || phase == UpdatePhase.TRANSFER_CANCELED.code) {
+                    onDeviceUpdate(deviceList.get(firstIndexInList), "device ReceiversList phase error : phase-" + phase);
+                    firstIndexInList++;
+                    if (firstIndexInList >= deviceList.size()) {
+                        onComplete(false, "all devices phase error");
+                    } else {
+                        startProgressCheckTask();
+                    }
                 } else {
                     MeshLogger.d("onProgressState : " + currentState);
 
                     if (updatePolicy == UpdatePolicy.VerifyOnly) {
-                        if (phase == UpdatePhase.VERIFICATION_FAILED.code || phase == UpdatePhase.VERIFICATION_SUCCESS.code) {
+                        if (phase == UpdatePhase.VERIFICATION_FAILED.code || phase == UpdatePhase.VERIFICATION_SUCCEEDED.code) {
                             // apply all devices update
                             onFUStateUpdate(FUState.UPDATE_APPLYING, null);
                             distributorAssist.applyDistribute();
@@ -234,7 +247,11 @@ public class FUController implements FUActionHandler {
                             onFUStateUpdate(FUState.UPDATE_RECHECKING, null);
                             log("waiting for disconnect -- 1");
                         } else {
-                            if (phase == UpdatePhase.APPLYING_UPDATE.code) {
+//                            if (phase == UpdatePhase.APPLYING_UPDATE.code) {
+                            /**
+                             * changed from 0x06 to 0x08
+                             */
+                            if (phase == UpdatePhase.APPLY_SUCCESS.code || phase == UpdatePhase.APPLYING_UPDATE.code) {
                                 onFUStateUpdate(FUState.DISTRIBUTE_CONFIRMING, null);
                                 distributorAssist.confirmDistribute();
                             } else {
@@ -290,6 +307,7 @@ public class FUController implements FUActionHandler {
      */
     public void clear() {
         currentState = FUState.IDLE;
+        firstIndexInList = 0;
         log("clear FU --------");
         if (initiator.isRunning()) {
             initiator.clear();

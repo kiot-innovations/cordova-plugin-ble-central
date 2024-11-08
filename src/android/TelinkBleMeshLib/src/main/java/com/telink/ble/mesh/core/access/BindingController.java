@@ -42,6 +42,7 @@ import com.telink.ble.mesh.core.message.config.ModelAppStatusMessage;
 import com.telink.ble.mesh.core.networking.AccessType;
 import com.telink.ble.mesh.entity.BindingDevice;
 import com.telink.ble.mesh.entity.CompositionData;
+import com.telink.ble.mesh.entity.Element;
 import com.telink.ble.mesh.util.MeshLogger;
 
 import java.util.ArrayList;
@@ -149,15 +150,14 @@ public class BindingController {
                 isGattBearer() ? BINDING_TIMEOUT_GATT : BINDING_TIMEOUT_ADV);
 
         log("binding begin: defaultBound? " + device.isDefaultBound());
-        if (bindingDevice.isDefaultBound()) {
-            addAppKey();
+        if (bindingDevice.getCompositionData() == null) {
+            this.getCompositionData();
         } else {
-            if (bindingDevice.getCompositionData() == null) {
-                this.getCompositionData();
+            if (bindingDevice.isDefaultBound()) {
+                addAppKey();
             } else {
                 onCompositionDataReceived(bindingDevice.getCompositionData());
             }
-
         }
     }
 
@@ -254,7 +254,7 @@ public class BindingController {
             log("models prepared: " + this.bindingModels.size());
             bindingDevice.setCompositionData(compositionData);
             //  draft feature
-            isAggSupported = false;
+//            isAggSupported = false;
             if (isAggSupported) {
                 log("bind app key by opcode-aggregator");
                 sendOpAggMessage();
@@ -304,7 +304,7 @@ public class BindingController {
         List<BindingModel> models = new ArrayList<>();
         isAggSupported = false;
         int offset = 0;
-        for (CompositionData.Element ele : compositionData.elements) {
+        for (Element ele : compositionData.elements) {
             if (ele.sigModels != null) {
                 for (int modelId : ele.sigModels) {
                     if (!MeshSigModel.useDeviceKeyForEnc(modelId)) {
@@ -357,7 +357,7 @@ public class BindingController {
                 onModelAppStatus(appStatus);
                 break;
             }
-            case OP_AGGREGATOR_STATUS: {
+            case CFG_OP_AGG_STATUS: {
                 if (step != STEP_SEND_OP_AGG) {
                     log("step not at sending op agg");
                     return;

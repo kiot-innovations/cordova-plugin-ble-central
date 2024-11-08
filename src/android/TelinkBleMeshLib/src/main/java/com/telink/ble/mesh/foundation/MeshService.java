@@ -26,6 +26,7 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
+import com.telink.ble.mesh.core.ble.GattConnection;
 import com.telink.ble.mesh.core.ble.GattRequest;
 import com.telink.ble.mesh.core.message.MeshMessage;
 import com.telink.ble.mesh.core.networking.ExtendBearerMode;
@@ -58,6 +59,9 @@ public class MeshService implements MeshController.EventCallback {
      */
     private MeshController mController;
 
+    /**
+     * singleton for mesh-service
+     */
     private static MeshService mThis = new MeshService();
 
     public static MeshService getInstance() {
@@ -92,6 +96,13 @@ public class MeshService implements MeshController.EventCallback {
         }
     }
 
+    public void clearNetworkCache() {
+        MeshLogger.log("MeshService#clearNetworkCache");
+        if (this.mController != null) {
+            this.mController.clearNetworkCache();
+        }
+    }
+
     /**
      * setup mesh info
      *
@@ -99,14 +110,6 @@ public class MeshService implements MeshController.EventCallback {
      */
     public void setupMeshNetwork(MeshConfiguration configuration) {
         mController.setupMeshNetwork(configuration);
-    }
-
-    public void setSequenceNumber(int sequenceNumber, boolean update) {
-        mController.setSequenceNumber(sequenceNumber, update);
-    }
-
-    public int getSequenceNumber() {
-        return mController.getSequenceNumber();
     }
 
     /**
@@ -131,7 +134,7 @@ public class MeshService implements MeshController.EventCallback {
 
     /**
      * @return direct connected node address,
-     * if 0 : invalid address
+     * or 0 : invalid address
      */
     public int getDirectConnectedNodeAddress() {
         return mController.getDirectNodeAddress();
@@ -180,6 +183,16 @@ public class MeshService implements MeshController.EventCallback {
     }
 
     /**
+     * used when {@link com.telink.ble.mesh.entity.ProvisioningDevice#autoStart} is false
+     *
+     * @param address unicast address
+     * @return is continue success
+     */
+    public boolean continueProvision(int address) {
+        return mController.continueProvision(address);
+    }
+
+    /**
      * start binding application key for models in node if device provisioned
      */
     public void startBinding(BindingParameters bindingParameters) {
@@ -222,6 +235,10 @@ public class MeshService implements MeshController.EventCallback {
         mController.startRemoteProvision(remoteProvisioningDevice);
     }
 
+    public boolean continueRemoteProvision(int address) {
+        return mController.continueRemoteProvision(address);
+    }
+
     /**
      * fast provision, [telink private]
      */
@@ -247,6 +264,8 @@ public class MeshService implements MeshController.EventCallback {
     }
 
     /**
+     * send GATT request if the gatt is connected {@link GattConnection#isConnected()}
+     *
      * @param request gatt request
      * @return if request sent
      */
@@ -260,8 +279,6 @@ public class MeshService implements MeshController.EventCallback {
     public int getMtu() {
         return mController.getMtu();
     }
-
-    public MeshController.Mode getActionMode() { return mController.getActionMode(); }
 
     /**
      * send mesh message
@@ -281,9 +298,11 @@ public class MeshService implements MeshController.EventCallback {
     }
 
     /**
-     * get all devices status
+     * Telink-private protocol.
+     * get all devices status by send command to OnlineStatus handle
      *
      * @return if online_status supported
+     * @see com.telink.ble.mesh.core.ble.UUIDInfo#CHARACTERISTIC_ONLINE_STATUS
      */
     public boolean getOnlineStatus() {
         return mController.getOnlineStatus();

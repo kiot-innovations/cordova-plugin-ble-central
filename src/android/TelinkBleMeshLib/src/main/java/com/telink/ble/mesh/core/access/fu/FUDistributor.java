@@ -281,8 +281,60 @@ class FUDistributor implements BlobTransferCallback {
      * one device by one device
      * if all devices executed, then next step
      */
-    // draft feature
-    private void nextAction(){}
+    private void nextAction() {
+
+        if (nodeIndex >= nodes.size()) {
+            // all nodes executed
+
+            log("current step complete: " + (step));
+            if (step == STEP_UPDATE_APPLY) {
+                onDistributeComplete(true, "update apply complete");
+                return;
+            }
+
+            if (step == STEP_UPDATE_STOP) {
+                onDistributeComplete(false, "update stopped");
+                return;
+            }
+
+            removeFailedDevices();
+
+            // check if has available nodes
+            if (nodes.size() != 0) {
+                nextStep();
+            } else {
+                onDistributeComplete(false, "all nodes failed when executing action");
+            }
+        } else {
+            int meshAddress = nodes.get(nodeIndex).meshAddress;
+            log(String.format("action executing: " + (step) + " -- %04X", meshAddress));
+            if (this.step == STEP_UPDATE_START) {
+                FirmwareUpdateStartMessage updateStartMessage = new FirmwareUpdateStartMessage(meshAddress, appKeyIndex);
+                updateStartMessage.metadata = metadata;
+                updateStartMessage.updateBLOBID = blobId;
+                updateStartMessage.updateTtl = UPDATE_TTL;
+                updateStartMessage.updateTimeoutBase = 0;
+                updateStartMessage.updateFirmwareImageIndex = 0;
+                onMeshMessagePrepared(updateStartMessage);
+            } else if (this.step == STEP_UPDATE_GET) {
+                FirmwareUpdateGetMessage getMessage = FirmwareUpdateGetMessage.getSimple(meshAddress, appKeyIndex);
+                onMeshMessagePrepared(getMessage);
+            } else if (this.step == STEP_UPDATE_APPLY) {
+                FirmwareUpdateApplyMessage applyMessage = FirmwareUpdateApplyMessage.getSimple(meshAddress, appKeyIndex);
+                onMeshMessagePrepared(applyMessage);
+            } else if (this.step == STEP_BLOB_TRANSFER) {
+                log("blob transfer start");
+                transfer.begin(isContinue);
+            } else if (this.step == STEP_UPDATE_CONTINUE) {
+                FirmwareUpdateGetMessage getMessage = FirmwareUpdateGetMessage.getSimple(connectedAddress, appKeyIndex);
+                onMeshMessagePrepared(getMessage);
+            } else if (this.step == STEP_UPDATE_STOP) {
+                FirmwareUpdateCancelMessage cancelMessage = FirmwareUpdateCancelMessage.getSimple(meshAddress, appKeyIndex);
+                onMeshMessagePrepared(cancelMessage);
+            }
+        }
+
+    }
 
     /**
      * filter out initiator messages
@@ -307,7 +359,7 @@ class FUDistributor implements BlobTransferCallback {
             }
 
             if (nodes.get(nodeIndex).meshAddress != src) {
-                log("unexpected notification src");
+                log("distributor unexpected notification src");
                 return;
             }
         }
@@ -361,7 +413,7 @@ class FUDistributor implements BlobTransferCallback {
                     onDeviceFail(nodes.get(nodeIndex), "firmware update phase err");
                 } else {
                     if (step == STEP_UPDATE_APPLY) {
-                        if (phase == UpdatePhase.VERIFICATION_SUCCESS
+                        if (phase == UpdatePhase.VERIFICATION_SUCCEEDED
                                 || phase == UpdatePhase.APPLYING_UPDATE) {
                             onDeviceApplySuccess(nodes.get(nodeIndex));
                         } else {

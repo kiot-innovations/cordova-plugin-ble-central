@@ -34,8 +34,19 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
+/**
+ * Provide APIs for file IO operation
+ */
 public abstract class FileSystem {
 
+    /**
+     * write target object to file
+     *
+     * @param context  Context
+     * @param fileName target fileName
+     * @param obj      target object, should be Serializable
+     * @return is write success
+     */
     public static boolean writeAsObject(Context context, String fileName, Object obj) {
 
         File dir = context.getFilesDir();
@@ -73,6 +84,13 @@ public abstract class FileSystem {
         return success;
     }
 
+    /**
+     * read file to object
+     *
+     * @param context  Context
+     * @param fileName target fileName
+     * @return Serializable object
+     */
     public static Object readAsObject(Context context, String fileName) {
 
         File dir = context.getFilesDir();
@@ -82,21 +100,21 @@ public abstract class FileSystem {
             return null;
         MeshLogger.d("obj file size: " + file.length());
         FileInputStream fis = null;
-        ObjectInputStream ois = null;
+        ObjectInputStream inputStream = null;
 
         Object result = null;
         try {
 
             fis = new FileInputStream(file);
-            ois = new ObjectInputStream(fis);
+            inputStream = new ObjectInputStream(fis);
 
-            result = ois.readObject();
+            result = inputStream.readObject();
         } catch (IOException | ClassNotFoundException e) {
             MeshLogger.w("read object error : " + e.toString());
         } finally {
             try {
-                if (ois != null)
-                    ois.close();
+                if (inputStream != null)
+                    inputStream.close();
             } catch (Exception e) {
             }
         }
@@ -119,12 +137,24 @@ public abstract class FileSystem {
         }
     }
 
+    /**
+     * get the setting directory in sdcard
+     *
+     * @return setting directory
+     */
     public static File getSettingPath() {
         File root = Environment.getExternalStorageDirectory();
         return new File(root.getAbsolutePath() + File.separator + "TelinkBleMesh");
     }
 
-    //
+    /**
+     * write string to file
+     *
+     * @param dir      directory
+     * @param filename filename
+     * @param content  content
+     * @return output file
+     */
     public static File writeString(File dir, String filename, String content) {
 
         if (!dir.exists()) {
@@ -157,7 +187,12 @@ public abstract class FileSystem {
         return null;
     }
 
-
+    /**
+     * read string from file
+     *
+     * @param file target
+     * @return output string
+     */
     public static String readString(File file) {
         if (!file.exists())
             return "";
@@ -183,7 +218,14 @@ public abstract class FileSystem {
         return "";
     }
 
-
+    /**
+     * write byte array to file
+     *
+     * @param dir      directory
+     * @param filename filename
+     * @param array    target byte array
+     * @return output file
+     */
     public static File writeByteArray(File dir, String filename, byte[] array) {
 
         if (!dir.exists()) {
@@ -216,6 +258,12 @@ public abstract class FileSystem {
         return null;
     }
 
+    /**
+     * read file as byte array
+     *
+     * @param file target file
+     * @return output byte array
+     */
     public static byte[] readByteArray(File file) {
         if (!file.exists())
             return null;
@@ -241,5 +289,20 @@ public abstract class FileSystem {
         }
 
         return null;
+    }
+
+
+    public static File getBinPath(int productId, int vid) {
+        File root = Environment.getExternalStorageDirectory();
+        return new File(root.getAbsolutePath() + File.separator + "TelinkBleMesh" + File.separator + "bin" + File.separator
+                + productId
+                + File.separator + String.format("%04X", vid) + ".bin");
+    }
+
+    public static File getBinDownloadingPath(int productId, int vid) {
+        File root = Environment.getExternalStorageDirectory();
+        return new File(root.getAbsolutePath() + File.separator + "TelinkBleMesh" + File.separator + "bin" + File.separator
+                + productId
+                + File.separator + String.format("%04X", vid) + ".bin_tmp");
     }
 }

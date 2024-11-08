@@ -22,6 +22,7 @@
  *******************************************************************************************************/
 package com.telink.ble.mesh.core.message.privatebeacon;
 
+import com.telink.ble.mesh.core.message.Opcode;
 import com.telink.ble.mesh.core.message.config.ConfigMessage;
 
 /**
@@ -37,21 +38,53 @@ public class PrivateGattProxySetMessage extends ConfigMessage {
      */
     public byte privateGattProxy;
 
-
+    /**
+     * ignore
+     *
+     * @param destinationAddress
+     */
     public PrivateGattProxySetMessage(int destinationAddress) {
         super(destinationAddress);
     }
 
+    /**
+     * Creates a simple PrivateGattProxySetMessage with the specified destination address and GATT Proxy state.
+     *
+     * @param destinationAddress The address of the node to which the message is being sent.
+     * @param gattProxy          The new GATT Proxy state.
+     * @return PrivateGattProxySetMessage instance.
+     */
+    public static PrivateGattProxySetMessage getSimple(int destinationAddress, byte gattProxy) {
+        PrivateGattProxySetMessage instance = new PrivateGattProxySetMessage(destinationAddress);
+        instance.privateGattProxy = gattProxy;
+        return instance;
+    }
+
+    /**
+     * ignore
+     *
+     * @return
+     */
     @Override
     public int getOpcode() {
-        return OPCODE_INVALID;
+        return Opcode.PRIVATE_GATT_PROXY_SET.value;
     }
 
+    /**
+     * ignore
+     *
+     * @return
+     */
     @Override
     public int getResponseOpcode() {
-        return OPCODE_INVALID;
+        return Opcode.PRIVATE_GATT_PROXY_STATUS.value;
     }
 
+    /**
+     * ignore
+     *
+     * @return
+     */
     @Override
     public byte[] getParams() {
         return new byte[]{privateGattProxy};

@@ -52,6 +52,7 @@ import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
@@ -70,44 +71,63 @@ import javax.crypto.spec.SecretKeySpec;
 
 public final class Encipher {
 
-    private static final byte[] SALT_INPUT_K2 = "smk2".getBytes();
+    private static final byte[] SALT_INPUT_K2 = "smk2".getBytes(); // is a salt input for generating a key. 
 
-    private static final byte[] SALT_INPUT_K3 = "smk3".getBytes();
+    private static final byte[] SALT_INPUT_K3 = "smk3".getBytes(); // is a salt input for generating a key. 
 
-    private static final byte[] SALT_INPUT_K4 = "smk4".getBytes();
+    private static final byte[] SALT_INPUT_K4 = "smk4".getBytes(); // is a salt input for generating a key. 
 
     //    private static final byte[] SALT_INPUT_SMK4 = "smk4".getBytes();
     //  “id6” || 0x01
-    private static final byte[] SALT_K3_M = new byte[]{0x69, 0x64, 0x36, 0x34, 0x01};
+    private static final byte[] SALT_K3_M = new byte[]{0x69, 0x64, 0x36, 0x34, 0x01}; // is a salt input used in combination with an identifier for generating a key. 
 
     // //  “id64” || 0x01
-    private static final byte[] SALT_K4_M = new byte[]{0x69, 0x64, 0x36, 0x01};
+    private static final byte[] SALT_K4_M = new byte[]{0x69, 0x64, 0x36, 0x01}; // is a salt input used in combination with an identifier for generating a key. 
 
-    private static final byte[] SALT_NKIK = "nkik".getBytes();
+    private static final byte[] SALT_NKIK = "nkik".getBytes(); // is a salt input for generating a key. 
 
-    private static final byte[] SALT_NKBK = "nkbk".getBytes();
+    private static final byte[] SALT_NKBK = "nkbk".getBytes(); // is a salt input for generating a key. 
 
-    private static final byte[] SALT_NKPK = "nkpk".getBytes();
+    private static final byte[] SALT_NKPK = "nkpk".getBytes(); // is a salt input for generating a key. 
 
-    private static final byte[] SALT_ID128 = "id128".getBytes();
+    private static final byte[] SALT_ID128 = "id128".getBytes(); // is a salt input for generating a key. 
 
     // 48 bit
-    private static final byte[] NODE_IDENTITY_HASH_PADDING = new byte[]{0, 0, 0, 0, 0, 0};
+    private static final byte[] NODE_IDENTITY_HASH_PADDING = new byte[]{0, 0, 0, 0, 0, 0}; // is a padding used for generating a cryptographic hash of a node's identity.
 
     // 40 bit
-    private static final byte[] NODE_PRIVATE_IDENTITY_HASH_PADDING = new byte[]{0, 0, 0, 0, 0};
+    private static final byte[] NODE_PRIVATE_IDENTITY_HASH_PADDING = new byte[]{0, 0, 0, 0, 0}; // is a padding used for generating a cryptographic hash of a node's private identity.
 
-    public static final byte[] PRCK = "prck".getBytes();
+    public static final byte[] PRCK = "prck".getBytes(); //  is a cryptographic key. 
 
-    public static final byte[] PRSK = "prsk".getBytes();
+    public static final byte[] PRSK = "prsk".getBytes();//  is a cryptographic key. 
 
-    public static final byte[] PRSN = "prsn".getBytes();
+    public static final byte[] PRSN = "prsn".getBytes();//  is a cryptographic key. 
 
-    public static final byte[] PRDK = "prdk".getBytes();
+    public static final byte[] PRDK = "prdk".getBytes();//  is a cryptographic key. 
 
-    public static final byte[] PRCK256 = "prck256".getBytes();
+    public static final byte[] PRCK256 = "prck256".getBytes();//  is a cryptographic key. 
 
+    private static final byte[] SALT_KEY_ZERO =
+            {
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            };
 
+    private static final byte[] SALT_KEY_ZERO_32 =
+            {
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            };
+
+    /**
+     * Generates a key pair using the elliptic curve cryptography (ECC) algorithm.
+     * It specifically uses the secp256r1 curve, also known as P-256.
+     *
+     * @return key pair
+     */
     public static KeyPair generateKeyPair() {
         try {
             // secp256r1
@@ -122,6 +142,13 @@ public final class Encipher {
         }
     }
 
+    /**
+     * Generates a shared secret key using the Elliptic Curve Diffie-Hellman (ECDH) algorithm.
+     *
+     * @param xy                    a byte array containing the x and y coordinates of a public key. The x coordinate is the first 32 bytes, and the y coordinate is the next 32 bytes.
+     * @param provisionerPrivateKey the private key of the provisioner.
+     * @return secret
+     */
     public static byte[] generateECDH(byte[] xy, PrivateKey provisionerPrivateKey) {
         try {
             BigInteger x = BigIntegers.fromUnsignedByteArray(xy, 0, 32);
@@ -164,20 +191,6 @@ public final class Encipher {
         return re;
     }
 
-    private static final byte[] SALT_KEY_ZERO =
-            {
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-            };
-
-    private static final byte[] SALT_KEY_ZERO_32 =
-            {
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-            };
-
     /**
      * S1
      * s1(M) = AES-CMAC ZERO (M)
@@ -189,6 +202,12 @@ public final class Encipher {
         return aesCmac(m, SALT_KEY_ZERO);
     }
 
+    /**
+     * s2
+     *
+     * @param m input
+     * @return result
+     */
     public static byte[] s2(byte[] m) {
         return hMacSha256(m, SALT_KEY_ZERO_32);
     }
@@ -224,7 +243,13 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         }
     }
 
-
+    /**
+     * implements the AES encryption algorithm to encrypt the given data using the provided key.
+     *
+     * @param data text
+     * @param key  key
+     * @return encrypted text
+     */
     public static byte[] aes(byte[] data, byte[] key) {
         final byte[] encrypted = new byte[data.length];
         final CipherParameters cipherParameters = new KeyParameter(key);
@@ -235,16 +260,36 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         return encrypted;
     }
 
-
+    /**
+     * k1
+     *
+     * @param ecdh ecdh
+     * @param salt salt
+     * @param text text
+     * @return result
+     */
     public static byte[] k1(byte[] ecdh, byte[] salt, byte[] text) {
         byte[] t = aesCmac(ecdh, salt);
         return aesCmac(text, t);
     }
 
+    /**
+     * calculate k2 by network key
+     *
+     * @param netKey network key
+     * @return result
+     */
     public static byte[][] calculateNetKeyK2(byte[] netKey) {
         return k2(netKey, new byte[]{0});
     }
 
+    /**
+     * k2
+     *
+     * @param data text
+     * @param p    p
+     * @return result
+     */
     public static byte[][] k2(byte[] data, byte[] p) {
 
         byte[] salt = generateSalt(SALT_INPUT_K2);
@@ -275,6 +320,12 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         return new byte[][]{t1, t2, t3};
     }
 
+    /**
+     * k3
+     *
+     * @param n n
+     * @return result
+     */
     public static byte[] k3(byte[] n) {
         byte[] salt = generateSalt(SALT_INPUT_K3);
         byte[] t = aesCmac(n, salt);
@@ -285,7 +336,12 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         return networkId;
     }
 
-
+    /**
+     * k4
+     *
+     * @param n n
+     * @return result
+     */
     public static byte k4(byte[] n) {
         byte[] salt = generateSalt(SALT_INPUT_K4);
         byte[] t = aesCmac(n, salt);
@@ -357,7 +413,12 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         return buffer.array();
     }
 
-
+    /**
+     * generates an identity key using a given network key
+     *
+     * @param networkKey network key
+     * @return result
+     */
     public static byte[] generateIdentityKey(byte[] networkKey) {
         byte[] salt = generateSalt(SALT_NKIK);
         ByteBuffer buffer = ByteBuffer.allocate(SALT_ID128.length + 1);
@@ -367,6 +428,12 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         return k1(networkKey, salt, p);
     }
 
+    /**
+     * generates a beacon key using a given network key.
+     *
+     * @param networkKey network key
+     * @return result
+     */
     public static byte[] generateBeaconKey(byte[] networkKey) {
         byte[] salt = generateSalt(SALT_NKBK);
         ByteBuffer buffer = ByteBuffer.allocate(SALT_ID128.length + 1);
@@ -376,6 +443,12 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         return k1(networkKey, salt, p);
     }
 
+    /**
+     * generates a private beacon key using a given network key
+     *
+     * @param networkKey network key
+     * @return result
+     */
     public static byte[] generatePrivateBeaconKey(byte[] networkKey) {
         byte[] salt = generateSalt(SALT_NKPK);
         ByteBuffer buffer = ByteBuffer.allocate(SALT_ID128.length + 1);
@@ -445,6 +518,12 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         return data;
     }
 
+    /**
+     * sha256
+     *
+     * @param text text
+     * @return result
+     */
     public static byte[] sha256(byte[] text) {
         SHA256.Digest Digest = new SHA256.Digest();
         return Digest.digest(text);
@@ -452,8 +531,11 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
 
 
     /**
-     * @param text
-     * @return
+     * hmac sha256
+     *
+     * @param text text
+     * @param key  key
+     * @return result
      */
     public static byte[] hMacSha256(byte[] text, byte[] key) {
         Mac sha256_HMAC = null;
@@ -551,7 +633,11 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         }
     }
 
-
+    /**
+     * check certificate by CA
+     *
+     * @param cerData certificate data formatted by x509 der
+     */
     public static X509Certificate checkCertificateByCa(byte[] cerData, byte[] caData) {
         CertificateFactory factory = null;
         try {
@@ -602,6 +688,12 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         }
     }
 
+    /**
+     * get public key in cert
+     *
+     * @param certificate certificate
+     * @return public key
+     */
     public static byte[] getPublicKeyInCert(X509Certificate certificate) {
         java.security.interfaces.ECPublicKey pk = (java.security.interfaces.ECPublicKey) certificate.getPublicKey();
         byte[] keyX = pk.getW().getAffineX().toByteArray();
@@ -632,6 +724,12 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         return pubKeyKey;
     }
 
+    /**
+     * get static oob in cert
+     *
+     * @param certificate certificate
+     * @return static oob data
+     */
     public static byte[] getStaticOOBInCert(X509Certificate certificate) {
 //        Set<String> nces = certificate.getNonCriticalExtensionOIDs();
         final String staticOOBKey = "2.25.234763379998062148653007332685657680359";
@@ -646,6 +744,44 @@ The output of the key generation function k1 is as follows: k1(N, SALT, P) = AES
         System.arraycopy(extension, extension.length - 16, oob, 0, 16);
         MeshLogger.d("static oob in cert: " + Arrays.bytesToHexString(oob));
         return oob;
+    }
+
+    /**
+     * calculate UUID by mac address
+     *
+     * @param mac mac address
+     * @return device UUID
+     */
+    public static byte[] calcUuidByMac(String mac) {
+        byte[] macBytes = Arrays.hexToBytes(mac.replace(":", ""));
+        return calcUuidByMac(macBytes);
+    }
+
+    /**
+     * calculate UUID by mac address
+     *
+     * @param input mac address byte array
+     * @return device UUID
+     */
+    public static byte[] calcUuidByMac(byte[] input) {
+        try {
+            byte[] nameSpace = Arrays.hexToBytes("10b8a76bad9dd11180b400c04fd430c8");
+            input = Arrays.reverse(input);
+            input = ByteBuffer.allocate(15).put(input).array();
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(nameSpace, 0, nameSpace.length);
+            md.update(input, 0, 15);
+            byte[] hashBytes = md.digest();
+            hashBytes[7] &= 0x0F;
+            hashBytes[7] |= 0x30;
+
+            hashBytes[8] &= 0x3F;
+            hashBytes[8] |= 0x80;
+            return hashBytes;
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 }

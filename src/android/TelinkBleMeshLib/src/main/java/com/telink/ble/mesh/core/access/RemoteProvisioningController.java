@@ -57,11 +57,13 @@ public class RemoteProvisioningController implements ProvisioningBridge {
 
     public static final int STATE_PROVISIONING = 0x02;
 
-    public static final int STATE_PROVISION_SUCCESS = 0x03;
+    public static final int STATE_CAPABILITY_RECEIVED = 0x03;
 
-    public static final int STATE_PROVISION_FAIL = 0x04;
+    public static final int STATE_PROVISION_SUCCESS = 0x04;
 
-    public static final int STATE_LINK_CLOSING = 0x05;
+    public static final int STATE_PROVISION_FAIL = 0x05;
+
+    public static final int STATE_LINK_CLOSING = 0x06;
 
     private int state;
 
@@ -120,6 +122,10 @@ public class RemoteProvisioningController implements ProvisioningBridge {
         this.provisioningController = provisioningController;
         this.provisioningDevice = remoteProvisioningDevice;
         linkOpen();
+    }
+
+    public void continueProvision(int address) {
+        provisioningController.continueProvision(address);
     }
 
     public void clear() {
@@ -291,8 +297,37 @@ public class RemoteProvisioningController implements ProvisioningBridge {
         }
     };
 
-    // draft feature
-    private void onMeshMessagePrepared(MeshMessage meshMessage) { }
+    private void onMeshMessagePrepared(MeshMessage meshMessage) {
+        log("remote provisioning message prepared: " + meshMessage.getClass().getSimpleName()
+                + String.format(" opcode: 0x%04X -- dst: 0x%04X -- params: ", meshMessage.getOpcode(), meshMessage.getDestinationAddress())
+                + Arrays.bytesToHexString(meshMessage.getParams()));
+        if (accessBridge != null) {
+            boolean isMessageSent = accessBridge.onAccessMessagePrepared(meshMessage, AccessBridge.MODE_REMOTE_PROVISIONING);
+            if (!isMessageSent) {
+                /*
+                 * message send error
+                 */
+                int opcode = meshMessage.getOpcode();
+                log(String.format("remote provisioning message send error : %04X", opcode));
+                if (meshMessage.getOpcode() == Opcode.REMOTE_PROV_PDU_SEND.value) {
+                    synchronized (WAITING_LOCK) {
+                        outboundReportWaiting = true;
+                    }
+                    resendProvisionPdu();
+                } else {
+                    onCommandError(meshMessage.getOpcode());
+                }
+
+            } else {
+                if (meshMessage.getOpcode() == Opcode.REMOTE_PROV_PDU_SEND.value) {
+                    synchronized (WAITING_LOCK) {
+                        outboundReportWaiting = true;
+                    }
+                    resendProvisionPdu();
+                }
+            }
+        }
+    }
 
 
     @Override
@@ -302,6 +337,14 @@ public class RemoteProvisioningController implements ProvisioningBridge {
             onProvisioningComplete(true, desc);
         } else if (state == ProvisioningController.STATE_FAILED) {
             onProvisioningComplete(false, desc);
+        } else if (state == ProvisioningController.STATE_CAPABILITY) {
+            onCapabilityReceived();
+        }
+    }
+
+    private void onCapabilityReceived() {
+        if (accessBridge != null) {
+            accessBridge.onAccessStateChanged(STATE_CAPABILITY_RECEIVED, "provision capability received", AccessBridge.MODE_REMOTE_PROVISIONING, this.provisioningDevice);
         }
     }
 

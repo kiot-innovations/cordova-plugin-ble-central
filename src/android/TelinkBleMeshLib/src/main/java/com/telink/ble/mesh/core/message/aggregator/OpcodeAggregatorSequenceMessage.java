@@ -52,15 +52,24 @@ public class OpcodeAggregatorSequenceMessage extends MeshMessage {
         this.params = params;
     }
 
-
+    /**
+     * Returns the opcode value for the message.
+     *
+     * @return The opcode value for the message.
+     */
     @Override
     public int getOpcode() {
-        return Opcode.OP_AGGREGATOR_SEQUENCE.value;
+        return Opcode.CFG_OP_AGG_SEQ.value;
     }
 
+    /**
+     * Returns the response opcode value for the message.
+     *
+     * @return The response opcode value for the message.
+     */
     @Override
     public int getResponseOpcode() {
-        return Opcode.OP_AGGREGATOR_STATUS.value;
+        return Opcode.CFG_OP_AGG_STATUS.value;
     }
 
 }
