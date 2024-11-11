@@ -139,6 +139,12 @@
         <source-file src="src/android/model/MeshNodeStatus.java" target-dir="src/com/megster/cordova/ble/central/model" />
         <source-file src="src/android/model/OnlineState.java" target-dir="src/com/megster/cordova/ble/central/model" />
         <source-file src="src/android/model/CertCacheService.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        
+        <source-file src="src/android/model/db/Scheduler.java" target-dir="src/com/megster/cordova/ble/central/model/db" />
+        <source-file src="src/android/model/db/MeshInfoService.java" target-dir="src/com/megster/cordova/ble/central/model/db" />
+        <source-file src="src/android/model/db/ObjectBox.java" target-dir="src/com/megster/cordova/ble/central/model/db" />
+        <source-file src="src/android/model/db/SchedulerRegister.java" target-dir="src/com/megster/cordova/ble/central/model/db" />
+
         <source-file src="src/android/model/json/AddressRange.java" target-dir="src/com/megster/cordova/ble/central/model/json" />
         <source-file src="src/android/model/json/MeshSecurity.java" target-dir="src/com/megster/cordova/ble/central/model/json" />
         <source-file src="src/android/model/json/MeshStorage.java" target-dir="src/com/megster/cordova/ble/central/model/json" />
