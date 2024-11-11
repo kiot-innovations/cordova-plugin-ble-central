@@ -20,7 +20,7 @@
  *          See the License for the specific language governing permissions and
  *          limitations under the License.
  *******************************************************************************************************/
-package com.telink.ble.mesh.model.db;
+package com.megster.cordova.ble.central.model.db;
 
 
 import android.os.Parcel;

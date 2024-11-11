@@ -20,15 +20,15 @@
  *          See the License for the specific language governing permissions and
  *          limitations under the License.
  *******************************************************************************************************/
-package com.telink.ble.mesh.model.db;
+package com.megster.cordova.ble.central.model.db;
 
-import com.telink.ble.mesh.model.GroupInfo;
-import com.telink.ble.mesh.model.MeshInfo;
-import com.telink.ble.mesh.model.MeshInfo_;
-import com.telink.ble.mesh.model.NodeInfo;
-import com.telink.ble.mesh.model.NodeLcProps;
-import com.telink.ble.mesh.model.OobInfo;
-import com.telink.ble.mesh.model.Scene;
+import com.megster.cordova.ble.central.model.GroupInfo;
+import com.megster.cordova.ble.central.model.MeshInfo;
+import com.megster.cordova.ble.central.model.MeshInfo_;
+import com.megster.cordova.ble.central.model.NodeInfo;
+import com.megster.cordova.ble.central.model.NodeLcProps;
+import com.megster.cordova.ble.central.model.OobInfo;
+import com.megster.cordova.ble.central.model.Scene;
 import com.telink.ble.mesh.util.Arrays;
 import com.telink.ble.mesh.util.MeshLogger;
 
