@@ -1,5 +1,5 @@
 /********************************************************************************************************
- * @file OobInfo.java
+ * @file CompositionDataConverter.java
  *
  * @brief for TLSR chips
  *
@@ -20,46 +20,23 @@
  *          See the License for the specific language governing permissions and
  *          limitations under the License.
  *******************************************************************************************************/
-package com.megster.cordova.ble.central.model;
+package com.telink.ble.mesh.model;
 
-import java.io.Serializable;
+import com.telink.ble.mesh.entity.CompositionData;
 
-import io.objectbox.annotation.Entity;
-import io.objectbox.annotation.Id;
+import io.objectbox.converter.PropertyConverter;
 
-@Entity
-public class OobInfo implements Serializable {
-    /**
-     * manual input in OOBEditActivity
-     */
-    public static final int IMPORT_MODE_MANUAL = 0;
+public class CompositionDataConverter implements PropertyConverter<CompositionData, byte[]> {
+    @Override
+    public CompositionData convertToEntityProperty(byte[] databaseValue) {
+        if (databaseValue == null) {
+            return null;
+        }
+        return CompositionData.from(databaseValue);
+    }
 
-    /**
-     * batch import from formatted file
-     */
-    public static final int IMPORT_MODE_FILE = 1;
-
-    @Id
-    public long id;
-
-    /**
-     * device UUID
-     */
-    public byte[] deviceUUID;
-
-    /**
-     * OOB value, used when device is static-oob supported
-     */
-    public byte[] oob;
-
-    /**
-     * @see #IMPORT_MODE_FILE
-     * @see #IMPORT_MODE_MANUAL
-     */
-    public int importMode;
-
-    /**
-     * import time
-     */
-    public long timestamp;
+    @Override
+    public byte[] convertToDatabaseValue(CompositionData entityProperty) {
+        return entityProperty.toBytes();
+    }
 }
