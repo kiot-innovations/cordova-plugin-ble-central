@@ -22,7 +22,7 @@
  *******************************************************************************************************/
 package com.megster.cordova.ble.central.model.json;
 
-import com.telink.ble.mesh.model.MeshInfo;
+import com.megster.cordova.ble.central.model.MeshInfo;
 
 public interface JsonImportCallback {
 
