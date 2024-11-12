@@ -26,13 +26,13 @@ import android.os.Handler;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 
-import com.telink.ble.mesh.TelinkMeshApplication;
+import com.megster.cordova.ble.central.TelinkMeshApplication;
 import com.telink.ble.mesh.core.MeshUtils;
 import com.telink.ble.mesh.core.message.MeshSigModel;
 import com.telink.ble.mesh.entity.CompositionData;
 import com.telink.ble.mesh.entity.Element;
-import com.telink.ble.mesh.model.db.MeshInfoService;
-import com.telink.ble.mesh.model.db.Scheduler;
+import com.megster.cordova.ble.central.model.db.MeshInfoService;
+import com.megster.cordova.ble.central.model.db.Scheduler;
 import com.telink.ble.mesh.util.Arrays;
 import com.telink.ble.mesh.util.MeshLogger;
 
