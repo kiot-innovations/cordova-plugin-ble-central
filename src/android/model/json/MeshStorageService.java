@@ -28,7 +28,7 @@ import com.google.gson.GsonBuilder;
 import com.telink.ble.mesh.core.MeshUtils;
 import com.telink.ble.mesh.core.message.MeshSigModel;
 import com.telink.ble.mesh.entity.CompositionData;
-import com.telink.ble.mesh.entity.Scheduler;
+import com.megster.cordova.ble.central.model.db.Scheduler;
 import com.telink.ble.mesh.entity.TransitionTime;
 import com.megster.cordova.ble.central.model.GroupInfo;
 import com.megster.cordova.ble.central.model.MeshAppKey;

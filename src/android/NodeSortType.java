@@ -1,5 +1,5 @@
 /********************************************************************************************************
- * @file CompositionDataConverter.java
+ * @file NodeSortType.java
  *
  * @brief for TLSR chips
  *
@@ -20,23 +20,26 @@
  *          See the License for the specific language governing permissions and
  *          limitations under the License.
  *******************************************************************************************************/
-package com.megster.cordova.ble.central.model;
+package com.megster.cordova.ble.central;
 
-import com.telink.ble.mesh.entity.CompositionData;
+public enum NodeSortType {
+  // address 1 -> 32767
+  ADDRESS_ASC("Address Asc"),
 
-import io.objectbox.converter.PropertyConverter;
+  // address 32767 -> 1
+  ADDRESS_DESC("Address Desc"),
 
-public class CompositionDataConverter implements PropertyConverter<CompositionData, byte[]> {
-  @Override
-  public CompositionData convertToEntityProperty(byte[] databaseValue) {
-    if (databaseValue == null) {
-      return null;
-    }
-    return CompositionData.from(databaseValue);
-  }
+  // A -> Z
+  NAME_ASC("Name Asc"),
 
-  @Override
-  public byte[] convertToDatabaseValue(CompositionData entityProperty) {
-    return entityProperty.toBytes();
+  // Z -> A
+  NAME_DESC("Name Desc"),
+
+  ;
+
+  public final String name;
+
+  NodeSortType(String name) {
+    this.name = name;
   }
 }

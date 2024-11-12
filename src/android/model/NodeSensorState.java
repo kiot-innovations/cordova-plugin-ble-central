@@ -20,7 +20,7 @@
  *          See the License for the specific language governing permissions and
  *          limitations under the License.
  *******************************************************************************************************/
-package com.telink.ble.mesh.model;
+package com.megster.cordova.ble.central.model;
 
 import com.telink.ble.mesh.core.DeviceProperty;
 
@@ -36,19 +36,19 @@ import io.objectbox.annotation.Id;
 
 @Entity
 public class NodeSensorState implements Serializable {
-    @Id
-    public long id;
+  @Id
+  public long id;
 
-    public int propertyID;
+  public int propertyID;
 
-    public byte[] state;
+  public byte[] state;
 
-    @Override
-    public String toString() {
-        return "NodeSensorState{" +
-                "id=" + id +
-                ", propertyID=" + Integer.toHexString(propertyID) +
-                ", state=" + Arrays.toString(state) +
-                '}';
-    }
+  @Override
+  public String toString() {
+    return "NodeSensorState{" +
+        "id=" + id +
+        ", propertyID=" + Integer.toHexString(propertyID) +
+        ", state=" + Arrays.toString(state) +
+        '}';
+  }
 }

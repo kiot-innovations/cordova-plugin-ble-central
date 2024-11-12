@@ -113,6 +113,10 @@
             target-dir="src/com/megster/cordova/ble/central"/>
         <source-file src="src/android/L2CAPContext.java"
             target-dir="src/com/megster/cordova/ble/central"/>
+        <source-file src="src/android/TelinkMeshApplication.java"
+            target-dir="src/com/megster/cordova/ble/central"/>
+        <source-file src="src/android/NodeSortType.java"
+            target-dir="src/com/megster/cordova/ble/central"/>
 
 
         <source-file src="src/android/DeviceProvisioning.java" target-dir="src/com/megster/cordova/ble/central/" />
@@ -139,7 +143,12 @@
         <source-file src="src/android/model/MeshNodeStatus.java" target-dir="src/com/megster/cordova/ble/central/model" />
         <source-file src="src/android/model/OnlineState.java" target-dir="src/com/megster/cordova/ble/central/model" />
         <source-file src="src/android/model/CertCacheService.java" target-dir="src/com/megster/cordova/ble/central/model" />
-        
+        <source-file src="src/android/model/NodeLcProps.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/OobInfo.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/NodeSensorState.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/OnlineStateConverter.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/CompositionDataConverter.java" target-dir="src/com/megster/cordova/ble/central/model" />
+
         <source-file src="src/android/model/db/Scheduler.java" target-dir="src/com/megster/cordova/ble/central/model/db" />
         <source-file src="src/android/model/db/MeshInfoService.java" target-dir="src/com/megster/cordova/ble/central/model/db" />
         <source-file src="src/android/model/db/ObjectBox.java" target-dir="src/com/megster/cordova/ble/central/model/db" />
@@ -151,6 +160,9 @@
         <source-file src="src/android/model/json/MeshStorageService.java" target-dir="src/com/megster/cordova/ble/central/model/json" />
 
         <lib-file src="src/android/TelinkBleMeshLib/build/outputs/aar/TelinkBleMeshLib-4.1.0.1.aar"/>
+        
+        <!-- Add ObjectBox dependencies -->
+        <framework src="io.objectbox:objectbox-gradle-plugin:4.0.3" />
 
     </platform>
 
