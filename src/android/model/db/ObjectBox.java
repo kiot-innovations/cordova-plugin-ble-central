@@ -26,6 +26,7 @@ import android.content.Context;
 
 //import com.telink.ble.mesh.demo.BuildConfig;
 //import com.telink.ble.mesh.model.MyObjectBox;
+import com.megster.cordova.ble.central.model.MyObjectBox;
 import com.telink.ble.mesh.util.MeshLogger;
 
 import io.objectbox.BoxStore;
@@ -43,20 +44,20 @@ public class ObjectBox {
     if (boxStore != null) {
       return true;
     }
-//     BoxStoreBuilder storeBuilder = MyObjectBox.builder()
-//     .validateOnOpen(ValidateOnOpenMode.WithLeaves) // Additional DB page validation
-//     .validateOnOpenPageLimit(20)
-//     .androidContext(context.getApplicationContext());
-//     try {
-//     boxStore = storeBuilder.build();
-//     } catch (FileCorruptException e) { // Demonstrate handling issues caused by devices with a broken file system
-//     MeshLogger.d("File corrupt, trying previous data snapshot...");
-//     storeBuilder.usePreviousCommit();
-//     boxStore = storeBuilder.build();
-//     } catch (DbSchemaException e) {
-//     e.printStackTrace();
-//     return false;
-//     }
+    BoxStoreBuilder storeBuilder = MyObjectBox.builder()
+        .validateOnOpen(ValidateOnOpenMode.WithLeaves) // Additional DB page validation
+        .validateOnOpenPageLimit(20)
+        .androidContext(context.getApplicationContext());
+    try {
+      boxStore = storeBuilder.build();
+    } catch (FileCorruptException e) { // Demonstrate handling issues caused by devices with a broken file system
+      MeshLogger.d("File corrupt, trying previous data snapshot...");
+      storeBuilder.usePreviousCommit();
+      boxStore = storeBuilder.build();
+    } catch (DbSchemaException e) {
+      e.printStackTrace();
+      return false;
+    }
 
     // if (BuildConfig.DEBUG) {
     // MeshLogger.d(String.format("Using ObjectBox %s (%s)", BoxStore.getVersion(),
@@ -65,7 +66,7 @@ public class ObjectBox {
     // // https://docs.objectbox.io/data-browser
     // new Admin(boxStore).start(context.getApplicationContext());
     // }
-     return true;
+    return true;
   }
 
   public static BoxStore get() {

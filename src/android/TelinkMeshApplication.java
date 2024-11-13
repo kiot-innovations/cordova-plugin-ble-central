@@ -25,7 +25,9 @@ package com.megster.cordova.ble.central;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.util.Log;
 
+import com.google.gson.Gson;
 import com.telink.ble.mesh.core.message.MeshSigModel;
 import com.telink.ble.mesh.core.message.NotificationMessage;
 import com.telink.ble.mesh.core.message.StatusMessage;
@@ -44,17 +46,25 @@ import com.telink.ble.mesh.foundation.event.OnlineStatusEvent;
 import com.telink.ble.mesh.foundation.event.StatusNotificationEvent;
 import com.megster.cordova.ble.central.model.AppSettings;
 import com.megster.cordova.ble.central.model.MeshInfo;
+import com.megster.cordova.ble.central.model.MeshNodeStatus;
 import com.megster.cordova.ble.central.model.NodeInfo;
 import com.megster.cordova.ble.central.model.NodeStatusChangedEvent;
 import com.megster.cordova.ble.central.model.OnlineState;
 import com.megster.cordova.ble.central.model.UnitConvert;
 import com.megster.cordova.ble.central.model.db.MeshInfoService;
 import com.megster.cordova.ble.central.model.db.ObjectBox;
+import com.megster.cordova.ble.central.AppCrashHandler;
 import com.telink.ble.mesh.util.MeshLogger;
+import com.telink.ble.mesh.foundation.parameter.AutoConnectParameters;
+
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.LOG;
+import org.apache.cordova.PluginResult;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -386,4 +396,122 @@ public class TelinkMeshApplication extends MeshApplication {
     // this.meshInfo.saveOrUpdate(this);
   }
 
+  List<Long> autoConnectFailures = new ArrayList<>();
+
+  public void autoConnect() {
+    try {
+      if (MeshService.getInstance() != null) {
+        MeshLogger.log("main auto connect");
+        MeshInfo meshInfo = TelinkBleMeshHandler.getInstance().getMeshInfo();
+        if (meshInfo.nodes.size() == 0) {
+          MeshService.getInstance().idle(true);
+        } else {
+          int directAdr = MeshService.getInstance().getDirectConnectedNodeAddress();
+          NodeInfo nodeInfo = meshInfo.getDeviceByMeshAddress(directAdr);
+          if (nodeInfo != null && nodeInfo.compositionData != null
+              && nodeInfo.compositionData.pid == AppSettings.PID_REMOTE) {
+            // if direct connected device is remote-control, disconnect
+            MeshService.getInstance().idle(true);
+          }
+          MeshService.getInstance().autoConnect(new AutoConnectParameters());
+          autoConnectFailures.clear();
+          Handler handler = new Handler();
+          int delayTime = 40 * 1000;
+          int autoHealSeqNumberIncBy = 1024;
+          handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+              LOG.d(TAG, "checking for auto heal -  seq number loss");
+              if (!MeshService.getInstance().isProxyLogin() && autoConnectFailures.size() > 0) {
+                Long currentMillis = System.currentTimeMillis();
+                int failedCount = 0;
+                for (int i = 0; i < autoConnectFailures.size(); i++) {
+                  if (currentMillis - autoConnectFailures.get(i) < delayTime) {
+                    failedCount++;
+                  }
+                }
+                if (failedCount > 2) {
+                  // ToVerify:
+                  // MeshService.getInstance()
+                  // .setSequenceNumber(MeshService.getInstance().getSequenceNumber() +
+                  // autoHealSeqNumberIncBy, false);
+                }
+              }
+            }
+          }, delayTime);
+        }
+      }
+    } catch (Exception e) {
+      Log.d(TAG, e.toString());
+    }
+  }
+
+  ArrayList<MeshNodeStatus> meshNodeStatuses = new ArrayList<MeshNodeStatus>();
+
+  MeshNodeStatus getMeshNodeStatusObject(int meshAddress) {
+    for (int i = 0; i < meshNodeStatuses.size(); i++) {
+      if (meshNodeStatuses.get(i).getMeshAddress() == meshAddress) {
+        return meshNodeStatuses.get(i);
+      }
+    }
+    MeshNodeStatus newMeshNodeStatus = new MeshNodeStatus(meshAddress);
+    newMeshNodeStatus.setEventsCallback(nodeStatus -> {
+      if (meshEventCallback != null) {
+        ArrayList<MeshNodeStatus> meshNodeStatuses = new ArrayList<>();
+        meshNodeStatuses.add(nodeStatus);
+        String json = new Gson().toJson(meshNodeStatuses);
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, json);
+        pluginResult.setKeepCallback(true);
+        meshEventCallback.sendPluginResult(pluginResult);
+      }
+    });
+    meshNodeStatuses.add(newMeshNodeStatus);
+    return newMeshNodeStatus;
+  }
+
+  ArrayList<MeshNodeStatus> getAllMeshNodeStatusObjects() {
+    return meshNodeStatuses;
+  }
+
+  public int[] getTargetEleAdresses(NodeInfo nodeInfo, int tarModelId) {
+    if (nodeInfo.compositionData == null)
+      return null;
+    int[] res = new int[nodeInfo.compositionData.elements.size()];
+    for (int i = 0; i < nodeInfo.compositionData.elements.size(); i++) {
+      res[i] = -1;
+    }
+    int c = 0;
+    int eleAdr = nodeInfo.meshAddress;
+    // ToVerfy:
+    // for (CompositionData.Element element : nodeInfo.compositionData.elements) {
+    // if (element.sigModels != null) {
+    // for (int modelId : element.sigModels) {
+    // if (modelId == tarModelId) {
+    // res[c++] = eleAdr;
+    // }
+    // }
+    // }
+    //
+    // if (element.vendorModels != null) {
+    // for (int modelId : element.vendorModels) {
+    // if (modelId == tarModelId) {
+    // res[c++] = eleAdr;
+    // }
+    // }
+    // }
+    //
+    // eleAdr++;
+    // }
+
+    if (c == 0) {
+      return null;
+    }
+    return res;
+  }
+
+  CallbackContext meshEventCallback;
+
+  public void setMeshEventCallback(CallbackContext meshEventCallback) {
+    this.meshEventCallback = meshEventCallback;
+  }
 }

@@ -97,19 +97,19 @@ public class DeviceProvisioning implements EventListener<String> {
     this.appCtx = actCtx;
     this.callbackContext = callbackContext;
 
-    TelinkBleMeshHandler.getInstance().addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_BEGIN, this);
-    TelinkBleMeshHandler.getInstance().addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_SUCCESS, this);
-    TelinkBleMeshHandler.getInstance().addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_FAIL, this);
-    TelinkBleMeshHandler.getInstance().addEventListener(BindingEvent.EVENT_TYPE_BIND_SUCCESS, this);
-    TelinkBleMeshHandler.getInstance().addEventListener(BindingEvent.EVENT_TYPE_BIND_FAIL, this);
-    TelinkBleMeshHandler.getInstance().addEventListener(ScanEvent.EVENT_TYPE_SCAN_TIMEOUT, this);
-    TelinkBleMeshHandler.getInstance().addEventListener(ScanEvent.EVENT_TYPE_DEVICE_FOUND, this);
-    TelinkBleMeshHandler.getInstance().addEventListener(ModelPublicationStatusMessage.class.getName(), this);
+    TelinkMeshApplication.getInstance().addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_BEGIN, this);
+    TelinkMeshApplication.getInstance().addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_SUCCESS, this);
+    TelinkMeshApplication.getInstance().addEventListener(ProvisioningEvent.EVENT_TYPE_PROVISION_FAIL, this);
+    TelinkMeshApplication.getInstance().addEventListener(BindingEvent.EVENT_TYPE_BIND_SUCCESS, this);
+    TelinkMeshApplication.getInstance().addEventListener(BindingEvent.EVENT_TYPE_BIND_FAIL, this);
+    TelinkMeshApplication.getInstance().addEventListener(ScanEvent.EVENT_TYPE_SCAN_TIMEOUT, this);
+    TelinkMeshApplication.getInstance().addEventListener(ScanEvent.EVENT_TYPE_DEVICE_FOUND, this);
+    TelinkMeshApplication.getInstance().addEventListener(ModelPublicationStatusMessage.class.getName(), this);
   }
 
   public void stop() {
     MeshService.getInstance().stopScan();
-    // TelinkBleMeshHandler.getInstance().removeEventListener(this);
+    // TelinkMeshApplication.getInstance().removeEventListener(this);
   }
 
   public void startScan() {
@@ -230,15 +230,15 @@ public class DeviceProvisioning implements EventListener<String> {
       nodeInfo.elementCnt = elementCnt;
       nodeInfo.deviceKey = remote.getDeviceKey();
       nodeInfo.netKeyIndexes
-          .add(String.valueOf(TelinkBleMeshHandler.getInstance().getMeshInfo().getDefaultNetKey().index));
+          .add(String.valueOf(TelinkMeshApplication.getInstance().getMeshInfo().getDefaultNetKey().index));
 
       // remove the device if it already existing in the mesh with same UUID - safety
-      TelinkBleMeshHandler.getInstance().getMeshInfo().removeDeviceByUUID(nodeInfo.deviceUUID);
-      TelinkBleMeshHandler.getInstance().getMeshInfo().removeDeviceByMeshAddress(nodeInfo.meshAddress);
+      TelinkMeshApplication.getInstance().getMeshInfo().removeDeviceByUUID(nodeInfo.deviceUUID);
+      TelinkMeshApplication.getInstance().getMeshInfo().removeDeviceByMeshAddress(nodeInfo.meshAddress);
 
-      TelinkBleMeshHandler.getInstance().getMeshInfo().insertDevice(nodeInfo, true);
-      TelinkBleMeshHandler.getInstance().getMeshInfo().increaseProvisionIndex(elementCnt);
-      TelinkBleMeshHandler.getInstance().getMeshInfo().saveOrUpdate();
+      TelinkMeshApplication.getInstance().getMeshInfo().insertDevice(nodeInfo, true);
+      TelinkMeshApplication.getInstance().getMeshInfo().increaseProvisionIndex(elementCnt);
+      TelinkMeshApplication.getInstance().getMeshInfo().saveOrUpdate();
 
       // check if private mode opened
       final boolean privateMode = SharedPreferenceHelper.isPrivateMode(this.ctx);
@@ -259,7 +259,7 @@ public class DeviceProvisioning implements EventListener<String> {
 
       nodeInfo.setDefaultBind(defaultBound);
       pvDevice.addLog(NetworkingDevice.TAG_BIND, "action start");
-      int appKeyIndex = TelinkBleMeshHandler.getInstance().getMeshInfo().getDefaultAppKeyIndex();
+      int appKeyIndex = TelinkMeshApplication.getInstance().getMeshInfo().getDefaultAppKeyIndex();
       BindingDevice bindingDevice = new BindingDevice(nodeInfo.meshAddress, nodeInfo.deviceUUID, appKeyIndex);
       bindingDevice.setDefaultBound(defaultBound);
       bindingDevice.setBearer(BindingBearer.GattOnly);
@@ -279,7 +279,7 @@ public class DeviceProvisioning implements EventListener<String> {
     deviceInList.state = NetworkingState.BIND_FAIL;
     deviceInList.addLog(NetworkingDevice.TAG_BIND, "failed - " + event.getDesc());
     // updateDeviceStatus(deviceInList, MESH_EVENT_DEVICE_BIND_FAIL);
-    TelinkBleMeshHandler.getInstance().getMeshInfo().saveOrUpdate();
+    TelinkMeshApplication.getInstance().getMeshInfo().saveOrUpdate();
   }
 
   private void onKeyBindSuccess(BindingEvent event) {
@@ -307,7 +307,7 @@ public class DeviceProvisioning implements EventListener<String> {
       pvDevice.state = NetworkingState.BIND_SUCCESS;
       provisionNext();
     }
-    TelinkBleMeshHandler.getInstance().getMeshInfo().saveOrUpdate();
+    TelinkMeshApplication.getInstance().getMeshInfo().saveOrUpdate();
     updateDeviceStatus(pvDevice, MESH_EVENT_DEVICE_PROV_SUCCESS);
   }
 
@@ -378,7 +378,7 @@ public class DeviceProvisioning implements EventListener<String> {
 
   private void updateDeviceStatus(NetworkingDevice device, String event) {
     if (callbackContext != null) {
-      MeshInfo meshInfo = TelinkBleMeshHandler.getInstance().getMeshInfo();
+      MeshInfo meshInfo = TelinkMeshApplication.getInstance().getMeshInfo();
       List<MeshNetKey> selectedNetKeys = new ArrayList<MeshNetKey>(meshInfo.meshNetKeyList);
       String meshInfoStr = MeshStorageService.getInstance().meshToJsonString(meshInfo, selectedNetKeys);
       callbackContext.success(meshInfoStr);
@@ -430,7 +430,7 @@ public class DeviceProvisioning implements EventListener<String> {
       MeshLogger.d("no waiting device found");
       return;
     }
-    startProvision(waitingDevice, TelinkBleMeshHandler.getInstance().getMeshInfo().getProvisionIndex());
+    startProvision(waitingDevice, TelinkMeshApplication.getInstance().getMeshInfo().getProvisionIndex());
   }
 
   private NetworkingDevice getNextWaitingDevice() {
@@ -448,7 +448,7 @@ public class DeviceProvisioning implements EventListener<String> {
       MeshService.getInstance().stopScan();
     }
 
-    int address = addr;// TelinkBleMeshHandler.getInstance().getMeshInfo().getProvisionIndex();
+    int address = addr;// TelinkMeshApplication.getInstance().getMeshInfo().getProvisionIndex();
     MeshLogger.d("alloc address: " + address);
     if (!MeshUtils.validUnicastAddress(address)) {
       this.callbackContext.error(Util.makeError("1", "Invalid device to provision"));
@@ -497,7 +497,7 @@ public class DeviceProvisioning implements EventListener<String> {
     if (pubEleAdr != -1) {
       final int period = 30 * 1000;
       final int pubAdr = 0xFFFF;
-      int appKeyIndex = TelinkBleMeshHandler.getInstance().getMeshInfo().getDefaultAppKeyIndex();
+      int appKeyIndex = TelinkMeshApplication.getInstance().getMeshInfo().getDefaultAppKeyIndex();
       ModelPublication modelPublication = ModelPublication.createDefault(pubEleAdr, pubAdr, appKeyIndex, period,
           modelId, true);
 
@@ -537,7 +537,7 @@ public class DeviceProvisioning implements EventListener<String> {
     pvDevice.state = success ? NetworkingState.TIME_PUB_SET_SUCCESS : NetworkingState.TIME_PUB_SET_FAIL;
     pvDevice.addLog(NetworkingDevice.TAG_PUB_SET, desc);
     // mListAdapter.notifyDataSetChanged();
-    TelinkBleMeshHandler.getInstance().getMeshInfo().saveOrUpdate();
+    TelinkMeshApplication.getInstance().getMeshInfo().saveOrUpdate();
     provisionNext();
   }
 
