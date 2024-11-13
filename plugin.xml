@@ -117,6 +117,10 @@
             target-dir="src/com/megster/cordova/ble/central"/>
         <source-file src="src/android/NodeSortType.java"
             target-dir="src/com/megster/cordova/ble/central"/>
+        <source-file src="src/android/AppCrashHandler.java"
+            target-dir="src/com/megster/cordova/ble/central"/>
+        <source-file src="src/android/TelinkFileProvider.java"
+            target-dir="src/com/megster/cordova/ble/central"/>
 
 
         <source-file src="src/android/DeviceProvisioning.java" target-dir="src/com/megster/cordova/ble/central/" />
@@ -148,6 +152,12 @@
         <source-file src="src/android/model/NodeSensorState.java" target-dir="src/com/megster/cordova/ble/central/model" />
         <source-file src="src/android/model/OnlineStateConverter.java" target-dir="src/com/megster/cordova/ble/central/model" />
         <source-file src="src/android/model/CompositionDataConverter.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/ConfigState.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/DeviceConfig.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/DirectForwardingInfo.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/DirectForwardingInfoService.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/FUCache.java" target-dir="src/com/megster/cordova/ble/central/model" />
+        <source-file src="src/android/model/FUCacheService.java" target-dir="src/com/megster/cordova/ble/central/model" />
 
         <source-file src="src/android/model/db/Scheduler.java" target-dir="src/com/megster/cordova/ble/central/model/db" />
         <source-file src="src/android/model/db/MeshInfoService.java" target-dir="src/com/megster/cordova/ble/central/model/db" />
