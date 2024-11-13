@@ -1,3 +1,25 @@
+/********************************************************************************************************
+ * @file NetworkingDevice.java
+ *
+ * @brief for TLSR chips
+ *
+ * @author telink
+ * @date Sep. 30, 2017
+ *
+ * @par Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
+ *
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
+ *
+ *              http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
+ *******************************************************************************************************/
 package com.megster.cordova.ble.central.model;
 
 import android.bluetooth.BluetoothDevice;
@@ -11,42 +33,48 @@ import java.util.List;
 
 public class NetworkingDevice {
 
-    public NetworkingState state = NetworkingState.IDLE;
+  public NetworkingState state = NetworkingState.IDLE;
 
-    public BluetoothDevice bluetoothDevice;
+  public BluetoothDevice bluetoothDevice;
 
-    /**
-     * oob info in scan record
-     */
-    public int oobInfo;
+  /**
+   * oob info in scan record
+   */
+  public int oobInfo;
 
-    public NodeInfo nodeInfo;
+  public NodeInfo nodeInfo;
 
-    public List<LogInfo> logs = new ArrayList<>();
+  // rssi
+  public int rssi;
 
-    public boolean logExpand = false;
+  public int serverAddress;
 
-    public static final String TAG_SCAN = "scan";
+  public List<LogInfo> logs = new ArrayList<>();
 
-    public static final String TAG_PROVISION = "provision";
+  public boolean logExpand = false;
 
-    public static final String TAG_BIND = "bind";
+  public static final String TAG_SCAN = "scan";
 
-    public static final String TAG_PUB_SET = "pub-set";
+  public static final String TAG_PROVISION = "provision";
 
-    public NetworkingDevice(NodeInfo nodeInfo) {
-        this.nodeInfo = nodeInfo;
-    }
+  public static final String TAG_BIND = "bind";
 
-    public int getStateColor() {
-        return Color.YELLOW;
-    }
+  public static final String TAG_PUB_SET = "pub-set";
 
-    public boolean isProcessing() {
-        return state == NetworkingState.PROVISIONING || state == NetworkingState.BINDING || state == NetworkingState.TIME_PUB_SETTING;
-    }
+  public NetworkingDevice(NodeInfo nodeInfo) {
+    this.nodeInfo = nodeInfo;
+  }
 
-    public void addLog(String tag, String log) {
-        logs.add(new LogInfo(tag, log, MeshLogger.LEVEL_DEBUG));
-    }
+  public int getStateColor() {
+    return Color.YELLOW;
+  }
+
+  public boolean isProcessing() {
+    return state == NetworkingState.PROVISIONING || state == NetworkingState.BINDING
+        || state == NetworkingState.TIME_PUB_SETTING;
+  }
+
+  public void addLog(String tag, String log) {
+    logs.add(new LogInfo(tag, log, MeshLogger.LEVEL_DEBUG));
+  }
 }

@@ -25,14 +25,14 @@ package com.megster.cordova.ble.central.model.json;
 import com.telink.ble.mesh.core.MeshUtils;
 import com.telink.ble.mesh.core.message.MeshMessage;
 import com.telink.ble.mesh.entity.CompositionData;
-import com.telink.ble.mesh.model.GroupInfo;
-import com.telink.ble.mesh.model.MeshAppKey;
-import com.telink.ble.mesh.model.MeshInfo;
-import com.telink.ble.mesh.model.MeshNetKey;
-import com.telink.ble.mesh.model.NodeInfo;
-import com.telink.ble.mesh.model.PublishModel;
-import com.telink.ble.mesh.model.db.Scheduler;
-import com.telink.ble.mesh.model.db.SchedulerRegister;
+import com.megster.cordova.ble.central.model.GroupInfo;
+import com.megster.cordova.ble.central.model.MeshAppKey;
+import com.megster.cordova.ble.central.model.MeshInfo;
+import com.megster.cordova.ble.central.model.MeshNetKey;
+import com.megster.cordova.ble.central.model.NodeInfo;
+import com.megster.cordova.ble.central.model.PublishModel;
+import com.megster.cordova.ble.central.model.db.Scheduler;
+import com.megster.cordova.ble.central.model.db.SchedulerRegister;
 import com.telink.ble.mesh.util.Arrays;
 
 import java.util.ArrayList;
@@ -355,7 +355,7 @@ public class MeshStorage {
      * convert all provisioners
      */
     for (Provisioner pv : provisioners) {
-      meshInfo.allProvisioners.add(com.telink.ble.mesh.model.json.Provisioner.from(pv));
+      meshInfo.allProvisioners.add(com.megster.cordova.ble.central.model.json.Provisioner.from(pv));
     }
 
     /*
@@ -391,9 +391,9 @@ public class MeshStorage {
     /*
      * convert all groups
      */
-    com.telink.ble.mesh.model.Scene scene;
+    com.megster.cordova.ble.central.model.Scene scene;
     for (MeshStorage.Scene outerScene : scenes) {
-      scene = new com.telink.ble.mesh.model.Scene();
+      scene = new com.megster.cordova.ble.central.model.Scene();
       scene.sceneId = MeshUtils.hexToIntB(outerScene.number);
       scene.name = outerScene.name;
       scene.addressList.addAll(outerScene.addresses);

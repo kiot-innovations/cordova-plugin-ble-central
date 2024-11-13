@@ -133,8 +133,6 @@ import java.util.*;
 import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_DUAL;
 import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_LE;
 
-import static com.megster.cordova.ble.central.model.MeshInfo.FILE_NAME;
-
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -1481,11 +1479,12 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         try {
             Log.d(TAG, "mesh_initialize: ");
             Boolean force = args.getBoolean(0);
+            String meshName = args.getString(1);
             if (!meshSdkInitialized) {
                 mGson = new GsonBuilder().setPrettyPrinting().create();
                 meshSdkInitialized = true;
                 meshHandler = new TelinkBleMeshHandler();
-                meshHandler.initialize(this.cordova.getActivity().getApplicationContext());
+                meshHandler.initialize(this.cordova.getActivity().getApplicationContext(), meshName);
                 meshHandler.addEventListener(AutoConnectEvent.EVENT_TYPE_AUTO_CONNECT_LOGIN, this);
                 meshHandler.addEventListener(MeshEvent.EVENT_TYPE_DISCONNECTED, this);
                 meshHandler.addEventListener(NetworkInfoUpdateEvent.EVENT_TYPE_NETWORKD_INFO_UPDATE, this);
@@ -1663,16 +1662,19 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
             // meshService.idle(true);
             //
             String inMeshInfo = args.getString(0);
+            String meshName = args.getString(1);
             MeshInfo newMesh = MeshStorageService.getInstance().importExternal(inMeshInfo,
-                    MeshInfo.createNewMesh(cordova.getActivity().getApplicationContext()));
+                    MeshInfo.createNewMesh(cordova.getActivity().getApplicationContext(), meshName));
             if (newMesh == null) {
                 Util.sendPluginResult(callbackContext, "mesh init failed");
                 return;
             }
             // newMesh.ivIndex = 0;
             // newMesh.sequenceNumber = 1536;
-            FileSystem.writeAsObject(cordova.getActivity().getApplicationContext(), MeshInfo.FILE_NAME,
-                    newMesh.clone());
+            // ToVerify:
+            TelinkBleMeshHandler.getInstance().getMeshInfo().saveOrUpdate();
+//            FileSystem.writeAsObject(cordova.getActivity().getApplicationContext(), MeshInfo.FILE_NAME,
+//                    newMesh.clone());
             Util.sendPluginResult(callbackContext, true);
             // newMesh.saveOrUpdate(cordova.getActivity().getApplicationContext());
             // MeshService.getInstance().idle(true);
@@ -2042,9 +2044,9 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
             // cordova.getActivity().getApplicationContext().getFilesDir().getAbsolutePath(),
             // FILE_NAME);
             // long reference = manager.enqueue(request);
-            downloadFile(url, authToken,
-                    cordova.getActivity().getApplicationContext().getFilesDir().getAbsolutePath() + "/" + FILE_NAME,
-                    callbackContext);
+//            downloadFile(url, authToken,
+//                    cordova.getActivity().getApplicationContext().getFilesDir().getAbsolutePath() + "/" + FILE_NAME,
+//                    callbackContext);
         } catch (Exception e) {
             Util.sendPluginResult(callbackContext, e.getMessage());
         }
@@ -2091,10 +2093,10 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         try {
             String uri = args.getString(0);
             String token = args.getString(1);
-            if (uploadFile(cordova.getActivity().getFilesDir().getAbsolutePath() + "/" + FILE_NAME, uri,
-                    token) != 200) {
-                Util.sendPluginResult(callbackContext, "{\"success\": 0}");
-            }
+//            if (uploadFile(cordova.getActivity().getFilesDir().getAbsolutePath() + "/" + FILE_NAME, uri,
+//                    token) != 200) {
+//                Util.sendPluginResult(callbackContext, "{\"success\": 0}");
+//            }
             Util.sendPluginResult(callbackContext, "{\"success\": 1}");
         } catch (Exception e) {
             Util.sendPluginResult(callbackContext, e.getMessage());
@@ -2224,8 +2226,9 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                     changeDetected = true;
                 }
                 if (changeDetected) {
-                    meshInfo.saveOrUpdate(cordova.getActivity().getApplicationContext());
-                    MeshService.getInstance().setSequenceNumber(meshInfo.sequenceNumber, false);
+                    meshInfo.saveOrUpdate();
+                    // ToVerify
+//                    MeshService.getInstance().setSequenceNumber(meshInfo.sequenceNumber, false);
                     // MeshService.getInstance().idle(true);
                     // TelinkBleMeshHandler.getInstance().setupMesh(meshInfo);
                     // meshHandler.setMeshInfo(meshInfo);
@@ -2246,7 +2249,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         if (targetDevice != null) {
             MeshService.getInstance().removeDevice(targetDevice.meshAddress);
             meshHandler.getMeshInfo().removeDeviceByMeshAddress(targetDevice.meshAddress);
-            meshHandler.getMeshInfo().saveOrUpdate(cordova.getContext());
+            meshHandler.getMeshInfo().saveOrUpdate();
             targetDevice = null;
         }
         if (nodeKickCallback != null) {
@@ -2307,7 +2310,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                             // deviceInfo.subList.add(Integer.valueOf(String
                             // .valueOf(Integer.valueOf(String.format("%04X",
                             // addDeviceToGroupMeta.get(2))))));
-                            deviceInfo.subList.add(groupAddress);
+                            deviceInfo.subList.add(String.valueOf(groupAddress));
                             boolean groupAdded = false;
                             for (int i = 0; i < meshInfo.groups.size(); i++) {
                                 if (meshInfo.groups.get(i).address == groupAddress) {
@@ -2329,7 +2332,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                                 deviceInfo.subList.remove(ind);
                             }
                         }
-                        meshInfo.saveOrUpdate(cordova.getContext());
+                        meshInfo.saveOrUpdate();
                     }
                     addDeviceToGroupCallback.success("successgroup");
                 }
@@ -2449,10 +2452,10 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                     // no need to set time publish
                     pvDevice.state = NetworkingState.BIND_SUCCESS;
                     // mesh.updateNodeByUUID(pvDevice.nodeInfo.deviceUUID, pvDevice.nodeInfo);
-                    mesh.saveOrUpdate(cordova.getContext());
+                    mesh.saveOrUpdate();
                     provisionComplete();
                 }
-                mesh.saveOrUpdate(cordova.getContext());
+                mesh.saveOrUpdate();
             } else {
                 NodeInfo local = mesh.getDeviceByUUID(remote.getDeviceUUID());
                 if (local == null)
@@ -2461,7 +2464,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
                 local.bound = true;
                 // local. = remote.boundModels;
                 local.compositionData = remote.getCompositionData();
-                mesh.saveOrUpdate(cordova.getContext());
+                mesh.saveOrUpdate();
                 if (meshBindDeviceCallbackContext != null) {
                     meshBindDeviceCallbackContext.success();
                     meshBindDeviceCallbackContext = null;
@@ -2480,7 +2483,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         if (pvDevice != null) {
             pvDevice.state = NetworkingState.BIND_FAIL;
             pvDevice.addLog(NetworkingDevice.TAG_BIND, "failed - " + event.getDesc());
-            meshHandler.getMeshInfo().saveOrUpdate(cordova.getContext());
+            meshHandler.getMeshInfo().saveOrUpdate();
             provisionComplete();
         }
     }
@@ -2528,7 +2531,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         pvDevice.addLog(NetworkingDevice.TAG_PUB_SET, success ? "success" : ("failed : " + desc));
         pvDevice.state = success ? NetworkingState.TIME_PUB_SET_SUCCESS : NetworkingState.TIME_PUB_SET_FAIL;
         pvDevice.addLog(NetworkingDevice.TAG_PUB_SET, desc);
-        meshHandler.getMeshInfo().saveOrUpdate(cordova.getContext());
+        meshHandler.getMeshInfo().saveOrUpdate();
         provisionComplete();
     }
 
@@ -2553,15 +2556,15 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
             int elementCnt = remote.getDeviceCapability().eleNum;
             nodeInfo.elementCnt = elementCnt;
             nodeInfo.deviceKey = remote.getDeviceKey();
-            nodeInfo.netKeyIndexes.add(meshHandler.getMeshInfo().getDefaultNetKey().index);
+            nodeInfo.netKeyIndexes.add(String.valueOf(meshHandler.getMeshInfo().getDefaultNetKey().index));
 
             // remove the device if it already existing in the mesh with same UUID - safety
             meshHandler.getMeshInfo().removeDeviceByUUID(nodeInfo.deviceUUID);
             meshHandler.getMeshInfo().removeDeviceByMeshAddress(nodeInfo.meshAddress);
 
-            meshHandler.getMeshInfo().insertDevice(nodeInfo);
+            meshHandler.getMeshInfo().insertDevice(nodeInfo, true);
             meshHandler.getMeshInfo().increaseProvisionIndex(elementCnt);
-            meshHandler.getMeshInfo().saveOrUpdate(cordova.getActivity().getApplicationContext());
+            meshHandler.getMeshInfo().saveOrUpdate();
 
             // check if private mode opened
             final boolean privateMode = SharedPreferenceHelper.isPrivateMode(cordova.getActivity().getApplicationContext());

@@ -29,37 +29,37 @@ import io.objectbox.annotation.Id;
 
 @Entity
 public class OobInfo implements Serializable {
-    /**
-     * manual input in OOBEditActivity
-     */
-    public static final int IMPORT_MODE_MANUAL = 0;
+  /**
+   * manual input in OOBEditActivity
+   */
+  public static final int IMPORT_MODE_MANUAL = 0;
 
-    /**
-     * batch import from formatted file
-     */
-    public static final int IMPORT_MODE_FILE = 1;
+  /**
+   * batch import from formatted file
+   */
+  public static final int IMPORT_MODE_FILE = 1;
 
-    @Id
-    public long id;
+  @Id
+  public long id;
 
-    /**
-     * device UUID
-     */
-    public byte[] deviceUUID;
+  /**
+   * device UUID
+   */
+  public byte[] deviceUUID;
 
-    /**
-     * OOB value, used when device is static-oob supported
-     */
-    public byte[] oob;
+  /**
+   * OOB value, used when device is static-oob supported
+   */
+  public byte[] oob;
 
-    /**
-     * @see #IMPORT_MODE_FILE
-     * @see #IMPORT_MODE_MANUAL
-     */
-    public int importMode;
+  /**
+   * @see #IMPORT_MODE_FILE
+   * @see #IMPORT_MODE_MANUAL
+   */
+  public int importMode;
 
-    /**
-     * import time
-     */
-    public long timestamp;
+  /**
+   * import time
+   */
+  public long timestamp;
 }

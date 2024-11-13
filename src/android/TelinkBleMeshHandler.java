@@ -14,6 +14,8 @@ import com.megster.cordova.ble.central.model.NodeInfo;
 import com.megster.cordova.ble.central.model.NodeStatusChangedEvent;
 import com.megster.cordova.ble.central.model.OnlineState;
 import com.megster.cordova.ble.central.model.UnitConvert;
+import com.megster.cordova.ble.central.model.db.MeshInfoService;
+import com.megster.cordova.ble.central.model.db.ObjectBox;
 import com.megster.cordova.ble.central.model.MeshNodeStatus;
 import com.telink.ble.mesh.core.message.MeshSigModel;
 import com.telink.ble.mesh.core.message.NotificationMessage;
@@ -59,14 +61,14 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
 
   // Very Important to call this before anything.
   // Because we are setting mThis to this.
-  public void initialize(Context ctx) {
+  public void initialize(Context ctx, String meshName) {
     // From TelinkMeshApplication.onCreate
     mThis = this;
     mEventBus = new EventBus<>();
     HandlerThread offlineCheckThread = new HandlerThread("offline check thread");
     offlineCheckThread.start();
     mOfflineCheckHandler = new Handler(offlineCheckThread.getLooper());
-    initMesh(ctx);
+    initMesh(ctx, meshName);
     // CertCacheService.getInstance().load(ctx);
     MeshLogger.enableRecord(true);
     // From MainActivity.onCreate
@@ -92,29 +94,35 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
     MeshService.getInstance().resetExtendBearerMode(SharedPreferenceHelper.getExtendBearerMode(ctx));
   }
 
-  private void initMesh(Context ctx) {
-    Object configObj = FileSystem.readAsObject(ctx, MeshInfo.FILE_NAME);
-    Log.d(TAG, "MeshInfoFileName" + MeshInfo.FILE_NAME);
+  private void initMesh(Context ctx, String meshName) {
+    // Object configObj = FileSystem.readAsObject(ctx, MeshInfo.FILE_NAME);
+    // Log.d(TAG, "MeshInfoFileName" + MeshInfo.FILE_NAME);
+    MeshInfoService.getInstance().init(ObjectBox.get());
     this.mCtx = ctx;
-    if (configObj == null) {
-      meshInfo = MeshInfo.createNewMesh(ctx);
-      meshInfo.saveOrUpdate(ctx);
+    MeshInfo meshInfo = null;
+    long id = SharedPreferenceHelper.getSelectedMeshId(this);
+    if (id != -1) {
+      // exists
+      meshInfo = MeshInfoService.getInstance().getById(id);
+    }
+    if (meshInfo == null) {
+      meshInfo = MeshInfo.createNewMesh(ctx, meshName);
     } else {
-      meshInfo = (MeshInfo) configObj;
-      Log.d(TAG, "MeshInfoFileName" + MeshInfo.FILE_NAME);
+      meshInfo = MeshInfo.createNewMesh(this, meshName);
+      // Log.d(TAG, "MeshInfoFileName" + MeshInfo.FILE_NAME);
     }
 
     // clearMesh(ctx);
   }
 
-  private void clearMesh(Context ctx) {
+  private void clearMesh(Context ctx, String meshName) {
     MeshService meshService = MeshService.getInstance();
     if (meshService != null) {
       // meshService.idle(true); this throws null poiunter expcetoiion if we call ion
       // init
     }
-    MeshInfo meshInfo = MeshInfo.createNewMesh(ctx);
-    meshInfo.saveOrUpdate(ctx);
+    MeshInfo meshInfo = MeshInfo.createNewMesh(ctx, meshName);
+    meshInfo.saveOrUpdate();
     MeshLogger.d("created new mesh");
     getInstance().setupMesh(meshInfo);
     if (meshService != null) {
@@ -166,8 +174,9 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
         networkInfoUpdateEvent.getSequenceNumber(), networkInfoUpdateEvent.getIvIndex()));
     this.meshInfo.ivIndex = networkInfoUpdateEvent.getIvIndex();
     this.meshInfo.sequenceNumber = networkInfoUpdateEvent.getSequenceNumber();
-    this.meshInfo.saveOrUpdate(this.mCtx);
-    dispatchEvent(new NetworkInfoUpdateEvent(this, NetworkInfoUpdateEvent.EVENT_TYPE_NETWORKD_INFO_UPDATE, networkInfoUpdateEvent.getSequenceNumber(), networkInfoUpdateEvent.getIvIndex()));
+    this.meshInfo.saveOrUpdate();
+    dispatchEvent(new NetworkInfoUpdateEvent(this, NetworkInfoUpdateEvent.EVENT_TYPE_NETWORKD_INFO_UPDATE,
+        networkInfoUpdateEvent.getSequenceNumber(), networkInfoUpdateEvent.getIvIndex()));
   }
 
   private boolean onLumStatus(NodeInfo nodeInfo, int lum, int meshAddress) {
@@ -178,7 +187,7 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
     }
     nodeInfo.setOnlineState(OnlineState.getBySt(tarOnOff));
     MeshNodeStatus meshNodeStatusObject = getMeshNodeStatusObject(meshAddress);
-//    meshNodeStatusObject.setOnOff(tarOnOff == 1);
+    // meshNodeStatusObject.setOnOff(tarOnOff == 1);
     meshNodeStatusObject.setOnlineStatus(true);
     if (nodeInfo.lum != lum && nodeInfo.meshAddress == meshAddress) {
       statusChanged = true;
@@ -382,6 +391,7 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
   }
 
   List<Long> autoConnectFailures = new ArrayList<>();
+
   @Override
   protected void onMeshEvent(MeshEvent meshEvent) {
     String eventType = meshEvent.getType();
@@ -392,12 +402,14 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
         MeshNodeStatus meshNodeStatusObject = getMeshNodeStatusObject(nodeInfo.meshAddress);
         meshNodeStatusObject.setOnlineStatus(false);
       }
-      if (MeshService.getInstance() != null && MeshService.getInstance().getActionMode().equals(MeshController.Mode.AUTO_CONNECT)) {
-        if (autoConnectFailures.size() > 10) {
-          autoConnectFailures.subList(0, autoConnectFailures.size() - 3).clear();
-        }
-        autoConnectFailures.add(System.currentTimeMillis());
-      }
+      // ToVerfy:
+//      if (MeshService.getInstance() != null
+//          && MeshService.getInstance().getActionMode().equals(MeshController.Mode.AUTO_CONNECT)) {
+//        if (autoConnectFailures.size() > 10) {
+//          autoConnectFailures.subList(0, autoConnectFailures.size() - 3).clear();
+//        }
+//        autoConnectFailures.add(System.currentTimeMillis());
+//      }
     }
   }
 
@@ -472,7 +484,7 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
           int directAdr = MeshService.getInstance().getDirectConnectedNodeAddress();
           NodeInfo nodeInfo = meshInfo.getDeviceByMeshAddress(directAdr);
           if (nodeInfo != null && nodeInfo.compositionData != null
-                  && nodeInfo.compositionData.pid == AppSettings.PID_REMOTE) {
+              && nodeInfo.compositionData.pid == AppSettings.PID_REMOTE) {
             // if direct connected device is remote-control, disconnect
             MeshService.getInstance().idle(true);
           }
@@ -486,7 +498,7 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
             public void run() {
               LOG.d(TAG, "checking for auto heal -  seq number loss");
               if (!MeshService.getInstance().isProxyLogin() && autoConnectFailures.size() > 0) {
-                Long currentMillis  = System.currentTimeMillis();
+                Long currentMillis = System.currentTimeMillis();
                 int failedCount = 0;
                 for (int i = 0; i < autoConnectFailures.size(); i++) {
                   if (currentMillis - autoConnectFailures.get(i) < delayTime) {
@@ -494,7 +506,9 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
                   }
                 }
                 if (failedCount > 2) {
-                  MeshService.getInstance().setSequenceNumber(MeshService.getInstance().getSequenceNumber() + autoHealSeqNumberIncBy, false);
+                  // ToVerify:
+//                  MeshService.getInstance()
+//                      .setSequenceNumber(MeshService.getInstance().getSequenceNumber() + autoHealSeqNumberIncBy, false);
                 }
               }
             }
@@ -542,25 +556,26 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
     }
     int c = 0;
     int eleAdr = nodeInfo.meshAddress;
-    for (CompositionData.Element element : nodeInfo.compositionData.elements) {
-      if (element.sigModels != null) {
-        for (int modelId : element.sigModels) {
-          if (modelId == tarModelId) {
-            res[c++] = eleAdr;
-          }
-        }
-      }
-
-      if (element.vendorModels != null) {
-        for (int modelId : element.vendorModels) {
-          if (modelId == tarModelId) {
-            res[c++] = eleAdr;
-          }
-        }
-      }
-
-      eleAdr++;
-    }
+    // ToVerfy:
+//    for (CompositionData.Element element : nodeInfo.compositionData.elements) {
+//      if (element.sigModels != null) {
+//        for (int modelId : element.sigModels) {
+//          if (modelId == tarModelId) {
+//            res[c++] = eleAdr;
+//          }
+//        }
+//      }
+//
+//      if (element.vendorModels != null) {
+//        for (int modelId : element.vendorModels) {
+//          if (modelId == tarModelId) {
+//            res[c++] = eleAdr;
+//          }
+//        }
+//      }
+//
+//      eleAdr++;
+//    }
 
     if (c == 0) {
       return null;
@@ -569,6 +584,7 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
   }
 
   CallbackContext meshEventCallback;
+
   public void setMeshEventCallback(CallbackContext meshEventCallback) {
     this.meshEventCallback = meshEventCallback;
   }

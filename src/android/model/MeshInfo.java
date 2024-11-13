@@ -4,442 +4,604 @@
  * @brief for TLSR chips
  *
  * @author telink
- * @date Sep. 30, 2010
+ * @date Sep. 30, 2017
  *
- * @par Copyright (c) 2010, Telink Semiconductor (Shanghai) Co., Ltd.
- *           All rights reserved.
+ * @par Copyright (c) 2017, Telink Semiconductor (Shanghai) Co., Ltd. ("TELINK")
  *
- *			 The information contained herein is confidential and proprietary property of Telink
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai)
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in.
- *           This heading MUST NOT be removed from this file.
+ *          Licensed under the Apache License, Version 2.0 (the "License");
+ *          you may not use this file except in compliance with the License.
+ *          You may obtain a copy of the License at
  *
- * 			 Licensees are granted free, non-transferable use of the information in this
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided.
+ *              http://www.apache.org/licenses/LICENSE-2.0
  *
+ *          Unless required by applicable law or agreed to in writing, software
+ *          distributed under the License is distributed on an "AS IS" BASIS,
+ *          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *          See the License for the specific language governing permissions and
+ *          limitations under the License.
  *******************************************************************************************************/
 package com.megster.cordova.ble.central.model;
-
 
 import android.content.Context;
 import android.util.SparseArray;
 
 import androidx.annotation.NonNull;
 
+import com.megster.cordova.ble.central.SharedPreferenceHelper;
+import com.megster.cordova.ble.central.TelinkMeshApplication;
 import com.telink.ble.mesh.core.MeshUtils;
 import com.telink.ble.mesh.core.networking.NetworkLayerPDU;
+//import com.telink.ble.mesh.demo.R;
+import com.telink.ble.mesh.entity.CompositionData;
 import com.telink.ble.mesh.foundation.MeshConfiguration;
 import com.telink.ble.mesh.foundation.event.NetworkInfoUpdateEvent;
-import com.megster.cordova.ble.central.model.Scene;
+import com.megster.cordova.ble.central.model.db.MeshInfoService;
 import com.megster.cordova.ble.central.model.json.AddressRange;
+import com.megster.cordova.ble.central.model.json.MeshStorageService;
+import com.megster.cordova.ble.central.model.json.Provisioner;
+import com.megster.cordova.ble.central.model.json.SceneRange;
 import com.telink.ble.mesh.util.Arrays;
-import com.telink.ble.mesh.util.FileSystem;
 import com.telink.ble.mesh.util.MeshLogger;
 
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
+
+import io.objectbox.annotation.Entity;
+import io.objectbox.annotation.Id;
+import io.objectbox.relation.ToMany;
 
 /**
  * Created by kee on 2019/8/22.
  */
 
+@Entity
 public class MeshInfo implements Serializable, Cloneable {
 
-    /**
-     * local storage file name , saved by serializi
-     */
-    public static final String FILE_NAME = "com.arihant.testapp.STORAGE";
+  public static final String MESH_NAME_DEFAULT = "Telink-SIG-mesh";
 
-    /**
-     * local provisioner UUID
-     */
-    public String provisionerUUID;
+  public static final String PROVISIONER_NAME_DEFAULT = "Default-Provisioner";
 
-    /**
-     * unicast address range
-     */
-    public List<AddressRange> unicastRange = new ArrayList<>();
+  @Id
+  public long id;
 
-    /**
-     * nodes saved in mesh network
-     */
-    public List<NodeInfo> nodes = new ArrayList<>();
+  /**
+   * the same with {@link com.telink.ble.mesh.model.json.MeshStorage#meshName}
+   */
+  public String meshName;
 
-    /**
-     * network key and network key index
-     */
-    public List<MeshNetKey> meshNetKeyList = new ArrayList<>();
+  /**
+   * the same with {@link com.telink.ble.mesh.model.json.MeshStorage#timestamp}
+   */
+  public String timestamp;
 
-//    public byte[] networkKey;
+  /**
+   * if the {@link #ivIndex} is uninitialized, provision is not permitted
+   * once received the ivIndex in beacon , the ivIndex should be replaced
+   */
+  public static final int UNINITIALIZED_IVI = -1;
 
-//    public int netKeyIndex;
+  /**
+   * save meshUUID in json
+   */
+  public String meshUUID;
 
-    /**
-     * application key list
-     */
-    public List<MeshAppKey> appKeyList = new ArrayList<>();
+  /**
+   * local provisioner UUID
+   */
+  public String provisionerUUID;
 
-    /**
-     * ivIndex and sequence number are used in NetworkPDU
-     *
-     * @see NetworkLayerPDU#getSeq()
-     * <p>
-     * should be updated and saved when {@link NetworkInfoUpdateEvent} received
-     */
-    public int ivIndex;
+  /**
+   * unicast address range
+   */
 
-    /**
-     * provisioner sequence number
-     */
-    public int sequenceNumber;
+  public ToMany<AddressRange> unicastRange;
 
-    /**
-     * provisioner address
-     */
-    public int localAddress;
+  /**
+   * nodes saved in mesh network
+   */
+  public ToMany<NodeInfo> nodes;
 
-    /**
-     * unicast address prepared for node provisioning
-     * increase by [element count] when provisioning success
-     *
-     * @see NodeInfo#elementCnt
-     */
-    private int provisionIndex = 1;
+  /**
+   * network key and network key index
+   */
+  public ToMany<MeshNetKey> meshNetKeyList;
 
-    public int addressTopLimit = 0xFF;
+  /**
+   * application key list
+   */
+  public ToMany<MeshAppKey> appKeyList;
 
-    /**
-     * scenes saved in mesh
-     */
-    public List<Scene> scenes = new ArrayList<>();
+  /**
+   * ivIndex and sequence number are used in NetworkPDU
+   *
+   * @see NetworkLayerPDU#getSeq()
+   *      <p>
+   *      should be updated and saved when {@link NetworkInfoUpdateEvent} received
+   */
+  public int ivIndex = UNINITIALIZED_IVI;
 
-    /**
-     * groups
-     */
-    public List<GroupInfo> groups = new ArrayList<>();
+  /**
+   * provisioner sequence number
+   */
+  public int sequenceNumber;
 
-    /**
-     * static-oob info
-     */
-    public List<OOBPair> oobPairs = new ArrayList<>();
+  /**
+   * provisioner address
+   */
+  public int localAddress;
 
-    public MeshNetKey getDefaultNetKey() {
-        return meshNetKeyList.get(0);
+  /**
+   * unicast address prepared for node provisioning
+   * increase by [element count] when provisioning success
+   *
+   * @see NodeInfo#elementCnt
+   */
+  private int provisionIndex = 1;
+
+  public int addressTopLimit = 0xFF;
+
+  /**
+   * scenes saved in mesh
+   */
+  public ToMany<Scene> scenes;
+
+  /**
+   * groups (group address 0xC000~0xC0FF)
+   */
+  public ToMany<GroupInfo> groups;
+
+  /**
+   * extend groups
+   */
+  public ToMany<GroupInfo> extendGroups;
+
+  /**
+   * all provisioners , include local provisioner and others parsed from json
+   */
+  public ToMany<Provisioner> allProvisioners;
+
+  /**
+   * excluded nodes, not show on UI
+   */
+  public ToMany<NodeInfo> excludedNodes;
+
+  public ToMany<NodeInfo> provisionerNodes;
+
+  // solicitation sequence number
+  public int solSeq = 1;
+
+  /**
+   * static-oob info
+   */
+  // public List<OOBPair> oobPairs = new ArrayList<>();
+
+  // public ToMany<OobInfo> oobInfos;
+  public MeshNetKey getDefaultNetKey() {
+    return meshNetKeyList.get(0);
+  }
+
+  public int getDefaultAppKeyIndex() {
+    if (appKeyList.size() == 0) {
+      return 0;
+    }
+    return appKeyList.get(0).index;
+  }
+
+  public NodeInfo getDeviceByMeshAddress(int meshAddress) {
+    if (this.nodes == null)
+      return null;
+
+    for (NodeInfo info : nodes) {
+      if (info.meshAddress == meshAddress)
+        return info;
+    }
+    return null;
+  }
+
+  public NodeInfo getDeviceByElementAddress(int elementAddress) {
+    if (this.nodes == null)
+      return null;
+
+    for (NodeInfo info : nodes) {
+      if (elementAddress >= info.meshAddress && elementAddress < info.meshAddress + info.elementCnt)
+        return info;
+    }
+    return null;
+  }
+
+  /**
+   * @param deviceUUID 16 bytes uuid
+   */
+  public NodeInfo getDeviceByUUID(@NonNull byte[] deviceUUID) {
+    for (NodeInfo info : nodes) {
+      if (Arrays.equals(deviceUUID, info.deviceUUID))
+        return info;
+    }
+    return null;
+  }
+
+  public void insertDevice(NodeInfo deviceInfo, boolean updatePvIndex) {
+    NodeInfo local = getDeviceByUUID(deviceInfo.deviceUUID);
+    if (local != null) {
+      this.removeDeviceByUUID(deviceInfo.deviceUUID);
+    }
+    nodes.add(deviceInfo);
+    if (updatePvIndex) {
+      increaseProvisionIndex(deviceInfo.elementCnt);
+    } else {
+      saveOrUpdate();
+    }
+  }
+
+  public boolean removeDeviceByMeshAddress(int address) {
+
+    if (this.nodes == null || this.nodes.size() == 0)
+      return false;
+
+    for (Scene scene : scenes) {
+      // ToVerify: commenting for now might break later
+      // scene.removeByAddress(address);
     }
 
-    public int getDefaultAppKeyIndex() {
-        if (appKeyList.size() == 0) {
-            return 0;
-        }
-        return appKeyList.get(0).index;
+    Iterator<NodeInfo> iterator = nodes.iterator();
+    while (iterator.hasNext()) {
+      NodeInfo deviceInfo = iterator.next();
+
+      if (deviceInfo.meshAddress == address) {
+        iterator.remove();
+        return true;
+      }
     }
 
-    public NodeInfo getDeviceByMeshAddress(int meshAddress) {
-        if (this.nodes == null)
-            return null;
+    return false;
+  }
 
-        for (NodeInfo info : nodes) {
-            if (info.meshAddress == meshAddress)
-                return info;
-        }
-        return null;
+  public void removeNode(NodeInfo node) {
+    if (this.nodes.size() == 0)
+      return;
+    for (Scene scene : scenes) {
+      if (scene.remove(node)) {
+        MeshInfoService.getInstance().updateScene(scene);
+      }
+    }
+    this.nodes.remove(node);
+    MeshInfoService.getInstance().removeNodeInfo(node);
+    saveOrUpdate();
+  }
+
+  public boolean removeDeviceByUUID(byte[] deviceUUID) {
+    if (this.nodes == null || this.nodes.size() == 0)
+      return false;
+    Iterator<NodeInfo> iterator = nodes.iterator();
+    while (iterator.hasNext()) {
+      NodeInfo deviceInfo = iterator.next();
+      if (Arrays.equals(deviceUUID, deviceInfo.deviceUUID)) {
+        iterator.remove();
+        MeshInfoService.getInstance().removeNodeInfo(deviceInfo);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * get all online nodes
+   */
+  public int getOnlineCountInAll() {
+    if (nodes == null || nodes.size() == 0) {
+      return 0;
     }
 
-    /**
-     * @param deviceUUID 16 bytes uuid
-     */
-    public NodeInfo getDeviceByUUID(@NonNull byte[] deviceUUID) {
-        for (NodeInfo info : nodes) {
-            if (Arrays.equals(deviceUUID, info.deviceUUID))
-                return info;
-        }
-        return null;
+    int result = 0;
+    for (NodeInfo device : nodes) {
+      if (!device.isOffline()) {
+        result++;
+      }
     }
 
-    public void insertDevice(NodeInfo deviceInfo) {
-        NodeInfo local = getDeviceByUUID(deviceInfo.deviceUUID);
-        if (local != null) {
-            this.removeDeviceByUUID(deviceInfo.deviceUUID);
+    return result;
+  }
+
+  /**
+   * get online nodes count in group
+   *
+   * @return
+   */
+  public int getOnlineCountInGroup(int groupAddress) {
+    if (nodes == null || nodes.size() == 0) {
+      return 0;
+    }
+    int result = 0;
+    for (NodeInfo device : nodes) {
+      if (!device.isOffline()) {
+        for (String addr : device.subList) {
+          if (MeshUtils.hexToIntB(addr) == groupAddress) {
+            result++;
+            break;
+          }
         }
-        nodes.add(deviceInfo);
+      }
     }
 
+    return result;
+  }
 
-    public boolean removeDeviceByMeshAddress(int address) {
+  public Scene getSceneById(int id) {
+    for (Scene scene : scenes) {
+      if (id == scene.sceneId) {
+        return scene;
+      }
+    }
+    return null;
+  }
 
-        if (this.nodes == null || this.nodes.size() == 0) return false;
+  /**
+   * 1-0xFFFF
+   *
+   * @return -1 invalid id
+   */
+  public int allocSceneId() {
+    if (scenes.size() == 0) {
+      return 1;
+    }
+    int id = scenes.get(scenes.size() - 1).sceneId;
+    if (id == 0xFFFF) {
+      return -1;
+    }
+    return id + 1;
+  }
 
-        for (Scene scene : scenes) {
-            scene.removeByAddress(address);
-        }
+  public void addScene(Scene scene) {
+    this.scenes.add(scene);
+    this.saveOrUpdate();
+  }
 
-        Iterator<NodeInfo> iterator = nodes.iterator();
-        while (iterator.hasNext()) {
-            NodeInfo deviceInfo = iterator.next();
+  public void removeScene(Scene scene) {
+    this.scenes.remove(scene);
+    this.saveOrUpdate();
+  }
 
-            if (deviceInfo.meshAddress == address) {
-                iterator.remove();
-                return true;
-            }
-        }
+  // public byte[] getOOBByDeviceUUID(byte[] deviceUUID) {
+  // for (OOBPair pair : oobPairs) {
+  // if (Arrays.equals(pair.deviceUUID, deviceUUID)) {
+  // return pair.oob;
+  // }
+  // }
+  // return null;
+  // }
 
-        return false;
+  // only update metadata in mesh info, not includes inner entities (ToOne and
+  // ToMany)
+  public void saveOrUpdate() {
+    MeshInfoService.getInstance().updateMeshInfo(this);
+  }
+
+  @Override
+  public String toString() {
+    return "MeshInfo{" +
+        "id=" + id +
+        "nodes=" + nodes.size() +
+        ", netKey=" + getNetKeyStr() +
+        ", appKey=" + getAppKeyStr() +
+        ", ivIndex=" + Integer.toHexString(ivIndex) +
+        ", sequenceNumber=" + sequenceNumber +
+        ", localAddress=" + localAddress +
+        ", provisionIndex=" + provisionIndex +
+        ", scenes=" + scenes.size() +
+        ", groups=" + groups.size() +
+        ", provisioners=" + allProvisioners.size() +
+        ", provisionerNodes=" + provisionerNodes.size() +
+        '}';
+  }
+
+  public String getNetKeyStr() {
+    StringBuilder strBuilder = new StringBuilder();
+    for (MeshNetKey meshNetKey : meshNetKeyList) {
+      strBuilder.append("\nindex: ").append(meshNetKey.index).append(" -- ").append("key: ")
+          .append(Arrays.bytesToHexString(meshNetKey.key));
+    }
+    return strBuilder.toString();
+  }
+
+  public String getAppKeyStr() {
+    StringBuilder strBuilder = new StringBuilder();
+    for (MeshAppKey meshNetKey : appKeyList) {
+      strBuilder.append("\nindex: ").append(meshNetKey.index).append(" -- ").append("key: ")
+          .append(Arrays.bytesToHexString(meshNetKey.key));
+    }
+    return strBuilder.toString();
+  }
+
+  public int getProvisionIndex() {
+    return provisionIndex;
+  }
+
+  /**
+   * @param addition
+   */
+  public void increaseProvisionIndex(int addition) {
+    this.provisionIndex += addition;
+    if (provisionIndex > this.addressTopLimit) {
+      MeshLogger.d("");
+      final int low = this.addressTopLimit + 1;
+      final int high = low + 0x03FF;
+      this.unicastRange.add(new AddressRange(low, high));
+      this.addressTopLimit = high;
+    }
+    saveOrUpdate();
+  }
+
+  public void resetProvisionIndex(int index) {
+    this.provisionIndex = index;
+  }
+
+  @Override
+  public Object clone() throws CloneNotSupportedException {
+    return super.clone();
+  }
+
+  public MeshConfiguration convertToConfiguration() {
+    MeshConfiguration meshConfiguration = new MeshConfiguration();
+    meshConfiguration.deviceKeyMap = new SparseArray<>();
+    if (nodes != null) {
+      for (NodeInfo node : nodes) {
+        meshConfiguration.deviceKeyMap.put(node.meshAddress, node.deviceKey);
+      }
+    }
+    MeshNetKey netKey = getDefaultNetKey();
+    meshConfiguration.netKeyIndex = netKey.index;
+    meshConfiguration.networkKey = netKey.key;
+
+    meshConfiguration.appKeyMap = new SparseArray<>();
+    if (appKeyList != null) {
+      for (MeshAppKey appKey : appKeyList) {
+        meshConfiguration.appKeyMap.put(appKey.index, appKey.key);
+      }
     }
 
-    public boolean removeDeviceByUUID(byte[] deviceUUID) {
+    meshConfiguration.ivIndex = ivIndex;
 
-        if (this.nodes == null || this.nodes.size() == 0) return false;
-        Iterator<NodeInfo> iterator = nodes.iterator();
-        while (iterator.hasNext()) {
-            NodeInfo deviceInfo = iterator.next();
-            if (Arrays.equals(deviceUUID, deviceInfo.deviceUUID)) {
-                iterator.remove();
-                return true;
-            }
-        }
+    meshConfiguration.sequenceNumber = sequenceNumber;
 
-        return false;
+    meshConfiguration.localAddress = localAddress;
+
+    meshConfiguration.proxyFilterWhiteList = new int[] { localAddress, MeshUtils.ADDRESS_BROADCAST };
+    return meshConfiguration;
+  }
+
+  public static MeshInfo createNewMesh(Context context, String meshName) {
+    // 0x7FFF
+
+    MeshInfo meshInfo = new MeshInfo();
+    if (meshName == null) {
+      meshName = MESH_NAME_DEFAULT;
+    }
+    meshInfo.meshName = meshName;
+    meshInfo.meshUUID = MeshUtils.byteArrayToUuid((MeshUtils.generateRandom(16)));
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault());
+    String formattedDate = sdf.format(new Date());
+    MeshLogger.d("time : " + formattedDate);
+    meshInfo.timestamp = formattedDate;
+
+    // final int IV_INDEX = 0x20345678;
+
+    final int KEY_COUNT = 3;
+    final String[] NET_KEY_NAMES = { "Default Net Key", "Sub Net Key 1", "Sub Net Key 2" };
+    final String[] APP_KEY_NAMES = { "Default App Key", "Sub App Key 1", "Sub App Key 2" };
+    final byte[] APP_KEY_VAL = MeshUtils.generateRandom(16);
+    for (int i = 0; i < KEY_COUNT; i++) {
+      meshInfo.meshNetKeyList.add(new MeshNetKey(NET_KEY_NAMES[i], i, MeshUtils.generateRandom(16)));
+      meshInfo.appKeyList.add(new MeshAppKey(APP_KEY_NAMES[i],
+          i, APP_KEY_VAL, i));
     }
 
-
-    /**
-     * get all online nodes
-     */
-    public int getOnlineCountInAll() {
-        if (nodes == null || nodes.size() == 0) {
-            return 0;
-        }
-
-        int result = 0;
-        for (NodeInfo device : nodes) {
-            if (!device.isOffline()) {
-                result++;
-            }
-        }
-
-        return result;
+    meshInfo.createProvisionerInfo();
+    meshInfo.ivIndex = 0x01;
+    // String[] groupNames =
+    // context.getResources().getStringArray(R.array.group_name);
+    String[] groupNames = { "Kitchen", "Balcony" };
+    GroupInfo group;
+    for (int i = 0; i < 8; i++) {
+      group = new GroupInfo();
+      group.address = i | 0xC000;
+      group.name = groupNames[i];
+      meshInfo.groups.add(group);
     }
 
-    /**
-     * get online nodes count in group
-     *
-     * @return
-     */
-    public int getOnlineCountInGroup(int groupAddress) {
-        if (nodes == null || nodes.size() == 0) {
-            return 0;
+    return meshInfo;
+  }
+
+  /**
+   * check whether extend groups exist
+   */
+  public void addExtendGroups() {
+    String[] extGroups = {
+        " subgroup level lightness",
+        " subgroup level temperature",
+        " subgroup level Hue",
+        " subgroup level Saturation"
+    };
+
+    int step = 0x10;
+
+    int extGroupIdx = 0xD000;
+    GroupInfo extGroup;
+    if (extendGroups.size() == 0) {
+      for (GroupInfo groupInfo : groups) {
+        for (int i = 0; i < extGroups.length; i++) {
+          extGroup = new GroupInfo();
+          extGroup.name = groupInfo.name + extGroups[i];
+          extGroup.address = extGroupIdx + i;
+          extendGroups.add(extGroup);
         }
-        int result = 0;
-        for (NodeInfo device : nodes) {
-            if (!device.isOffline()) {
-                for (int addr : device.subList) {
-                    if (addr == groupAddress) {
-                        result++;
-                        break;
-                    }
-                }
-            }
+        extGroupIdx += step;
+      }
+    }
+  }
+
+  public boolean createProvisionerInfo() {
+    int maxRangeHigh = 0;
+    int tmpHigh;
+    for (Provisioner provisioner : allProvisioners) {
+      for (AddressRange unRange : provisioner.allocatedUnicastRange) {
+        tmpHigh = unRange.high;
+        if (maxRangeHigh == 0 || maxRangeHigh < tmpHigh) {
+          maxRangeHigh = tmpHigh;
         }
-
-        return result;
+      }
     }
 
+    int low = maxRangeHigh + 1;
 
-    public void saveScene(Scene scene) {
-        for (Scene local : scenes) {
-            if (local.id == scene.id) {
-                local.states = scene.states;
-                return;
-            }
-        }
-        scenes.add(scene);
+    if (low + 0xFF > MeshUtils.UNICAST_ADDRESS_MAX) {
+      MeshLogger.d("no available unicast range");
+      return false;
     }
 
-    public Scene getSceneById(int id) {
-        for (Scene scene : scenes) {
-            if (id == scene.id) {
-                return scene;
-            }
-        }
-        return null;
+    int high;
+    if (low == 1) {
+      high = 0x03FF;
+    } else {
+      high = low + 0x03FF;
     }
 
-    /**
-     * 1-0xFFFF
-     *
-     * @return -1 invalid id
-     */
-    public int allocSceneId() {
-        if (scenes.size() == 0) {
-            return 1;
-        }
-        int id = scenes.get(scenes.size() - 1).id;
-        if (id == 0xFFFF) {
-            return -1;
-        }
-        return id + 1;
-    }
+    this.unicastRange.clear();
+    this.unicastRange.add(new AddressRange(low, high));
+    this.localAddress = low;
+    this.resetProvisionIndex(low + 1);
+    this.addressTopLimit = high;
+    this.sequenceNumber = 0;
+    this.ivIndex = MeshInfo.UNINITIALIZED_IVI;
 
-    /**
-     * get oob
-     */
-    public byte[] getOOBByDeviceUUID(byte[] deviceUUID) {
-        for (OOBPair pair : oobPairs) {
-            if (Arrays.equals(pair.deviceUUID, deviceUUID)) {
-                return pair.oob;
-            }
-        }
-        return null;
-    }
+    String pvUUID = SharedPreferenceHelper.getLocalUUID(TelinkMeshApplication.getInstance());
+    Provisioner provisioner = new Provisioner();
+    provisioner.provisionerName = PROVISIONER_NAME_DEFAULT;
+    provisioner.UUID = pvUUID;
+    provisioner.allocatedSceneRange.add(new SceneRange(0x01, 0x0F));
+    provisioner.allocatedUnicastRange.add(new AddressRange(low, high));
+    provisioner.allocatedGroupRange.add(new AddressRange(0xC000, 0xC0FF));
+    this.allProvisioners.add(provisioner);
 
+    NodeInfo nodeInfo = new NodeInfo();
+    nodeInfo.meshAddress = this.localAddress;
+    nodeInfo.name = String.format("Provisioner Node: %04X", this.localAddress);
+    nodeInfo.compositionData = CompositionData.from(MeshStorageService.VC_TOOL_CPS);
+    nodeInfo.elementCnt = 1;
+    nodeInfo.deviceUUID = MeshUtils.uuidToByteArray(pvUUID);
+    nodeInfo.bound = true;
+    nodeInfo.deviceKey = Arrays.hexToBytes(NodeInfo.LOCAL_DEVICE_KEY);
+    this.provisionerNodes.add(nodeInfo);
+    return true;
+  }
 
-    public void saveOrUpdate(Context context) {
-        FileSystem.writeAsObject(context, FILE_NAME, this);
-    }
-
-
-    @Override
-    public String toString() {
-        return "MeshInfo{" +
-                "nodes=" + nodes.size() +
-                ", netKey=" + getNetKeyStr() +
-                ", appKey=" + getAppKeyStr() +
-                ", ivIndex=" + Integer.toHexString(ivIndex) +
-                ", sequenceNumber=" + sequenceNumber +
-                ", localAddress=" + localAddress +
-                ", provisionIndex=" + provisionIndex +
-                ", scenes=" + scenes.size() +
-                ", groups=" + groups.size() +
-                '}';
-    }
-
-    public String getNetKeyStr() {
-        StringBuilder strBuilder = new StringBuilder();
-        for (MeshNetKey meshNetKey : meshNetKeyList) {
-            strBuilder.append("\nindex: ").append(meshNetKey.index).append(" -- ").append("key: ").append(Arrays.bytesToHexString(meshNetKey.key));
-        }
-        return strBuilder.toString();
-    }
-
-    public String getAppKeyStr() {
-        StringBuilder strBuilder = new StringBuilder();
-        for (MeshAppKey meshNetKey : appKeyList) {
-            strBuilder.append("\nindex: ").append(meshNetKey.index).append(" -- ").append("key: ").append(Arrays.bytesToHexString(meshNetKey.key));
-        }
-        return strBuilder.toString();
-    }
-
-    public int getProvisionIndex() {
-        return provisionIndex;
-    }
-
-    /**
-     * @param addition
-     */
-    public void increaseProvisionIndex(int addition) {
-        this.provisionIndex += addition;
-        if (provisionIndex > this.addressTopLimit) {
-            MeshLogger.d("");
-            final int low = this.addressTopLimit + 1;
-            final int high = low + 0x03FF;
-            this.unicastRange.add(new AddressRange(low, high));
-            this.addressTopLimit = high;
-        }
-    }
-
-    public void resetProvisionIndex(int index) {
-        this.provisionIndex = index;
-    }
-
-    @Override
-    public Object clone() throws CloneNotSupportedException {
-        return super.clone();
-    }
-
-
-    public MeshConfiguration convertToConfiguration() {
-        MeshConfiguration meshConfiguration = new MeshConfiguration();
-        meshConfiguration.deviceKeyMap = new SparseArray<>();
-        if (nodes != null) {
-            for (NodeInfo node : nodes) {
-                meshConfiguration.deviceKeyMap.put(node.meshAddress, node.deviceKey);
-            }
-        }
-        MeshNetKey netKey = getDefaultNetKey();
-        meshConfiguration.netKeyIndex = netKey.index;
-        meshConfiguration.networkKey = netKey.key;
-
-        meshConfiguration.appKeyMap = new SparseArray<>();
-        if (appKeyList != null) {
-            for (MeshAppKey appKey :
-                    appKeyList) {
-                meshConfiguration.appKeyMap.put(appKey.index, appKey.key);
-            }
-        }
-
-        meshConfiguration.ivIndex = ivIndex;
-
-        meshConfiguration.sequenceNumber = sequenceNumber;
-
-        meshConfiguration.localAddress = localAddress;
-
-        return meshConfiguration;
-    }
-
-
-    public static MeshInfo createNewMesh(Context context) {
-        // 0x7FFF
-        final int DEFAULT_LOCAL_ADDRESS = 0x0001;
-        MeshInfo meshInfo = new MeshInfo();
-
-        // for test
-//        final byte[] NET_KEY = Arrays.hexToBytes("26E8D2DBD4363AF398FEDE049BAD0086");
-
-        // for test
-//        final byte[] APP_KEY = Arrays.hexToBytes("7759F48730A4F1B2259B1B0681BE7C01");
-
-//        final int IV_INDEX = 0x20345678;
-
-//        meshInfo.networkKey = NET_KEY;
-        meshInfo.meshNetKeyList = new ArrayList<>();
-        final int KEY_COUNT = 3;
-        final String[] NET_KEY_NAMES = {"Default Net Key", "Sub Net Key 1", "Sub Net Key 2"};
-        final String[] APP_KEY_NAMES = {"Default App Key", "Sub App Key 1", "Sub App Key 2"};
-        final byte[] APP_KEY_VAL = MeshUtils.generateRandom(16);
-        for (int i = 0; i < KEY_COUNT; i++) {
-            meshInfo.meshNetKeyList.add(new MeshNetKey(NET_KEY_NAMES[i], i, MeshUtils.generateRandom(16)));
-            meshInfo.appKeyList.add(new MeshAppKey(APP_KEY_NAMES[i],
-                    i, APP_KEY_VAL, i));
-        }
-
-        meshInfo.ivIndex = 0;
-        meshInfo.sequenceNumber = 0;
-        meshInfo.nodes = new ArrayList<>();
-        meshInfo.localAddress = DEFAULT_LOCAL_ADDRESS;
-        meshInfo.provisionIndex = DEFAULT_LOCAL_ADDRESS + 1; // 0x0002
-
-//        meshInfo.provisionerUUID = SharedPreferenceHelper.getLocalUUID(context);
-        meshInfo.provisionerUUID = MeshUtils.byteArrayToUuid((MeshUtils.generateRandom(16)));
-
-        meshInfo.groups = new ArrayList<>();
-        meshInfo.unicastRange = new ArrayList<>();
-        meshInfo.unicastRange.add(new AddressRange(0x01, 0x400));
-        meshInfo.addressTopLimit = 0x0400;
-        // String[] groupNames = context.getResources().getStringArray(R.array.group_name);
-        String[] groupNames = {"Kitchen", "Balcony"};
-        GroupInfo group;
-        for (int i = 0; i < 2; i++) {
-            group = new GroupInfo();
-            group.address = i | 0xC000;
-            group.name = groupNames[i];
-            meshInfo.groups.add(group);
-        }
-
-        return meshInfo;
-    }
-
+  public int getSolSeq() {
+    int seq = solSeq++;
+    this.saveOrUpdate();
+    return seq;
+  }
 }
-
