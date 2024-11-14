@@ -496,8 +496,8 @@
     };
     
     module.exports.mesh = {
-        initialize: function initialize(force) {
-            return exec('mesh_initialize', [force]);
+        initialize: function initialize(force, meshName) {
+            return exec('mesh_initialize', [force, meshName]);
         },
         stopScan: function stopScan() {
             return exec('mesh_stopScan');

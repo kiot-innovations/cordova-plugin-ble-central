@@ -1484,7 +1484,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         mGson = new GsonBuilder().setPrettyPrinting().create();
         meshSdkInitialized = true;
         meshHandler = new TelinkMeshApplication();
-        meshHandler.initMeshInfo();
+        meshHandler.initialize(this.cordova.getActivity().getApplicationContext());
         meshHandler.addEventListener(AutoConnectEvent.EVENT_TYPE_AUTO_CONNECT_LOGIN, this);
         meshHandler.addEventListener(MeshEvent.EVENT_TYPE_DISCONNECTED, this);
         meshHandler.addEventListener(NetworkInfoUpdateEvent.EVENT_TYPE_NETWORKD_INFO_UPDATE, this);

@@ -26,6 +26,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
+import android.content.Context;
 
 import com.google.gson.Gson;
 import com.telink.ble.mesh.core.message.MeshSigModel;
@@ -40,10 +41,12 @@ import com.telink.ble.mesh.core.message.sensor.SensorStatusMessage;
 import com.telink.ble.mesh.entity.OnlineStatusInfo;
 import com.telink.ble.mesh.foundation.MeshApplication;
 import com.telink.ble.mesh.foundation.MeshService;
+import com.telink.ble.mesh.foundation.MeshConfiguration;
 import com.telink.ble.mesh.foundation.event.MeshEvent;
 import com.telink.ble.mesh.foundation.event.NetworkInfoUpdateEvent;
 import com.telink.ble.mesh.foundation.event.OnlineStatusEvent;
 import com.telink.ble.mesh.foundation.event.StatusNotificationEvent;
+import com.telink.ble.mesh.foundation.EventBus;
 import com.megster.cordova.ble.central.model.AppSettings;
 import com.megster.cordova.ble.central.model.MeshInfo;
 import com.megster.cordova.ble.central.model.MeshNodeStatus;
@@ -82,6 +85,9 @@ public class TelinkMeshApplication extends MeshApplication {
 
   private Handler mOfflineCheckHandler;
 
+  private EventBus<String> mEventBus;
+  private Context mCtx;
+
   @Override
   public void onCreate() {
     super.onCreate();
@@ -92,6 +98,41 @@ public class TelinkMeshApplication extends MeshApplication {
     MeshLogger.enableRecord(SharedPreferenceHelper.isLogEnable(this));
     AppCrashHandler.init(this);
     closePErrorDialog();
+  }
+
+  // Very Important to call this before anything.
+  // Because we are setting mThis to this.
+  public void initialize(Context ctx) {
+    // From TelinkMeshApplication.onCreate
+    mThis = this;
+    mEventBus = new EventBus<>();
+    HandlerThread offlineCheckThread = new HandlerThread("offline check thread");
+    offlineCheckThread.start();
+    mOfflineCheckHandler = new Handler(offlineCheckThread.getLooper());
+    initMeshInfo();
+    // CertCacheService.getInstance().load(ctx);
+    MeshLogger.enableRecord(true);
+    // From MainActivity.onCreate
+    startMeshService(ctx);
+    resetNodeState();
+    autoConnect();
+  }
+
+  private void startMeshService(Context ctx) {
+    try {
+      // Init
+      MeshService.getInstance().init(ctx, TelinkBleMeshHandler.getInstance());
+      // Convert mesh info to mesh configuration
+      MeshConfiguration meshConfiguration = getMeshInfo().convertToConfiguration();
+      MeshService.getInstance().setupMeshNetwork(meshConfiguration);
+      MeshService.getInstance().checkBluetoothState();
+      // Set DLE Enable
+      MeshService.getInstance().resetExtendBearerMode(SharedPreferenceHelper.getExtendBearerMode(ctx));
+    } catch (Exception e) {
+      Log.e(TAG, e.toString());
+    }
+    // set DLE enable
+    MeshService.getInstance().resetExtendBearerMode(SharedPreferenceHelper.getExtendBearerMode(ctx));
   }
 
   /**
@@ -507,6 +548,21 @@ public class TelinkMeshApplication extends MeshApplication {
       return null;
     }
     return res;
+  }
+
+  public void resetNodeState() {
+    MeshInfo mesh = TelinkBleMeshHandler.getInstance().getMeshInfo();
+    if (mesh.nodes != null) {
+      for (NodeInfo deviceInfo : mesh.nodes) {
+        MeshNodeStatus meshNodeStatusObject = getMeshNodeStatusObject(deviceInfo.meshAddress);
+        deviceInfo.setOnlineState(OnlineState.OFFLINE);
+        meshNodeStatusObject.setOnlineStatus(false);
+        deviceInfo.lum = 0;
+        deviceInfo.temp = 0;
+        meshNodeStatusObject.setLum(0);
+        meshNodeStatusObject.setTemp(0);
+      }
+    }
   }
 
   CallbackContext meshEventCallback;
