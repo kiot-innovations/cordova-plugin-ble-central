@@ -24,7 +24,7 @@ package com.megster.cordova.ble.central.model.db;
 
 import com.megster.cordova.ble.central.model.GroupInfo;
 import com.megster.cordova.ble.central.model.MeshInfo;
-//import com.megster.cordova.ble.central.model.MeshInfo_;
+import com.megster.cordova.ble.central.model.MeshInfo_;
 import com.megster.cordova.ble.central.model.NodeInfo;
 import com.megster.cordova.ble.central.model.NodeLcProps;
 import com.megster.cordova.ble.central.model.OobInfo;
@@ -72,11 +72,11 @@ public class MeshInfoService {
     return meshInfoBox.get(id);
   }
 
-//  public MeshInfo getByUuid(String meshUUID) {
-//    Query<MeshInfo> query = meshInfoBox.query()
-//        .equal(MeshInfo_.meshUUID, meshUUID, QueryBuilder.StringOrder.CASE_INSENSITIVE).build();
-//    return query.findFirst();
-//  }
+  public MeshInfo getByUuid(String meshUUID) {
+    Query<MeshInfo> query = meshInfoBox.query()
+        .equal(MeshInfo_.meshUUID, meshUUID, QueryBuilder.StringOrder.CASE_INSENSITIVE).build();
+    return query.findFirst();
+  }
 
   /**
    * @return all mesh info in db
