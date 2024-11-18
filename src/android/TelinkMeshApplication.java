@@ -39,12 +39,15 @@ import com.telink.ble.mesh.core.message.lighting.CtlTemperatureStatusMessage;
 import com.telink.ble.mesh.core.message.lighting.LightnessStatusMessage;
 import com.telink.ble.mesh.core.message.sensor.SensorStatusMessage;
 import com.telink.ble.mesh.entity.OnlineStatusInfo;
+import com.telink.ble.mesh.foundation.Event;
+import com.telink.ble.mesh.foundation.EventHandler;
 import com.telink.ble.mesh.foundation.MeshApplication;
 import com.telink.ble.mesh.foundation.MeshService;
 import com.telink.ble.mesh.foundation.MeshConfiguration;
 import com.telink.ble.mesh.foundation.event.MeshEvent;
 import com.telink.ble.mesh.foundation.event.NetworkInfoUpdateEvent;
 import com.telink.ble.mesh.foundation.event.OnlineStatusEvent;
+import com.telink.ble.mesh.foundation.event.ScanEvent;
 import com.telink.ble.mesh.foundation.event.StatusNotificationEvent;
 import com.telink.ble.mesh.foundation.EventBus;
 import com.megster.cordova.ble.central.model.AppSettings;
@@ -74,7 +77,7 @@ import java.util.List;
  * Telinkg Mesh App
  * Created by kee on 2017/8/17.
  */
-public class TelinkMeshApplication extends MeshApplication {
+public class TelinkMeshApplication extends MeshApplication implements EventHandler {
 
   private final String TAG = "Telink-APP";
   private static TelinkMeshApplication mThis;
@@ -128,7 +131,7 @@ public class TelinkMeshApplication extends MeshApplication {
   private void startMeshService(Context ctx) {
     try {
       // Init
-      MeshService.getInstance().init(ctx, TelinkBleMeshHandler.getInstance());
+      MeshService.getInstance().init(ctx, this);
       // Convert mesh info to mesh configuration
       MeshConfiguration meshConfiguration = getMeshInfo().convertToConfiguration();
       MeshService.getInstance().setupMeshNetwork(meshConfiguration);
@@ -451,7 +454,7 @@ public class TelinkMeshApplication extends MeshApplication {
     try {
       if (MeshService.getInstance() != null) {
         MeshLogger.log("main auto connect");
-        MeshInfo meshInfo = TelinkBleMeshHandler.getInstance().getMeshInfo();
+        MeshInfo meshInfo = TelinkMeshApplication.getInstance().getMeshInfo();
         if (meshInfo.nodes.size() == 0) {
           MeshService.getInstance().idle(true);
         } else {
@@ -588,4 +591,20 @@ public class TelinkMeshApplication extends MeshApplication {
   public void setMeshEventCallback(CallbackContext meshEventCallback) {
     this.meshEventCallback = meshEventCallback;
   }
+
+  @Override
+  public void onEventHandle(Event<String> event) {
+    if (event instanceof NetworkInfoUpdateEvent) {
+      // update network info: ivIndex , sequence number
+      this.onNetworkInfoUpdate((NetworkInfoUpdateEvent) event);
+    } else if (event instanceof StatusNotificationEvent) {
+      onStatusNotificationEvent((StatusNotificationEvent) event);
+    } else if (event instanceof OnlineStatusEvent) {
+      onOnlineStatusEvent((OnlineStatusEvent) event);
+    } else if (event instanceof MeshEvent) {
+      onMeshEvent((MeshEvent) event);
+    }
+    dispatchEvent(event);
+  }
+
 }
