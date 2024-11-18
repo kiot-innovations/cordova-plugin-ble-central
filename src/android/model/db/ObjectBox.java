@@ -44,28 +44,34 @@ public class ObjectBox {
     if (boxStore != null) {
       return true;
     }
-    BoxStoreBuilder storeBuilder = MyObjectBox.builder()
-        .validateOnOpen(ValidateOnOpenMode.WithLeaves) // Additional DB page validation
-        .validateOnOpenPageLimit(20)
-        .androidContext(context.getApplicationContext());
     try {
-      boxStore = storeBuilder.build();
-    } catch (FileCorruptException e) { // Demonstrate handling issues caused by devices with a broken file system
-      MeshLogger.d("File corrupt, trying previous data snapshot...");
-      storeBuilder.usePreviousCommit();
-      boxStore = storeBuilder.build();
-    } catch (DbSchemaException e) {
+      BoxStoreBuilder storeBuilder = MyObjectBox.builder()
+          .validateOnOpen(ValidateOnOpenMode.WithLeaves) // Additional DB page validation
+          .validateOnOpenPageLimit(20)
+          .androidContext(context.getApplicationContext());
+
+      try {
+        boxStore = storeBuilder.build();
+      } catch (FileCorruptException e) { // Demonstrate handling issues caused by devices with a broken file system
+        MeshLogger.d("File corrupt, trying previous data snapshot...");
+        storeBuilder.usePreviousCommit();
+        boxStore = storeBuilder.build();
+      } catch (DbSchemaException e) {
+        e.printStackTrace();
+        return false;
+      }
+
+      // if (BuildConfig.DEBUG) {
+      // MeshLogger.d(String.format("Using ObjectBox %s (%s)", BoxStore.getVersion(),
+      // BoxStore.getVersionNative()));
+      // // Enable ObjectBox Admin on debug builds.
+      // // https://docs.objectbox.io/data-browser
+      // new Admin(boxStore).start(context.getApplicationContext());
+      // }
+    } catch (Exception e) {
       e.printStackTrace();
       return false;
     }
-
-    // if (BuildConfig.DEBUG) {
-    // MeshLogger.d(String.format("Using ObjectBox %s (%s)", BoxStore.getVersion(),
-    // BoxStore.getVersionNative()));
-    // // Enable ObjectBox Admin on debug builds.
-    // // https://docs.objectbox.io/data-browser
-    // new Admin(boxStore).start(context.getApplicationContext());
-    // }
     return true;
   }
 
