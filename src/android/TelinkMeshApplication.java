@@ -95,27 +95,34 @@ public class TelinkMeshApplication extends MeshApplication {
     HandlerThread offlineCheckThread = new HandlerThread("offline check thread");
     offlineCheckThread.start();
     mOfflineCheckHandler = new Handler(offlineCheckThread.getLooper());
-    MeshLogger.enableRecord(SharedPreferenceHelper.isLogEnable(this));
-    AppCrashHandler.init(this);
-    closePErrorDialog();
+    // MeshLogger.enableRecord(SharedPreferenceHelper.isLogEnable(this));
+    // AppCrashHandler.init(this);
+    // closePErrorDialog();
   }
 
   // Very Important to call this before anything.
   // Because we are setting mThis to this.
   public void initialize(Context ctx) {
     // From TelinkMeshApplication.onCreate
+    onCreate();
     mThis = this;
     mEventBus = new EventBus<>();
     HandlerThread offlineCheckThread = new HandlerThread("offline check thread");
     offlineCheckThread.start();
     mOfflineCheckHandler = new Handler(offlineCheckThread.getLooper());
-    initMeshInfo();
+    mCtx = ctx;
+    initDb(ctx);
+    initMeshInfo(ctx);
     // CertCacheService.getInstance().load(ctx);
     MeshLogger.enableRecord(true);
     // From MainActivity.onCreate
     startMeshService(ctx);
     resetNodeState();
     autoConnect();
+  }
+
+  public Context getApplicationContext() {
+    return mCtx;
   }
 
   private void startMeshService(Context ctx) {
@@ -142,19 +149,20 @@ public class TelinkMeshApplication extends MeshApplication {
    * 3. if not exist, create a new mesh network
    * 4. setup the mesh network
    */
-  public void initMeshInfo() {
+  public void initMeshInfo(Context ctx) {
     MeshInfoService.getInstance().init(ObjectBox.get());
     MeshInfo meshInfo = null;
-    long id = SharedPreferenceHelper.getSelectedMeshId(this);
+    long id = SharedPreferenceHelper.getSelectedMeshId(ctx);
     if (id != -1) {
       // exists
       meshInfo = MeshInfoService.getInstance().getById(id);
     }
     if (meshInfo == null) {
-      meshInfo = MeshInfo.createNewMesh(this, "Default Mesh");
+      meshInfo = MeshInfo.createNewMesh(ctx, "Default Mesh");
     }
+    this.meshInfo = meshInfo;
     MeshInfoService.getInstance().addMeshInfo(meshInfo);
-    SharedPreferenceHelper.setSelectedMeshId(this, meshInfo.id);
+    SharedPreferenceHelper.setSelectedMeshId(ctx, meshInfo.id);
 
     loadSortType();
   }
@@ -214,7 +222,7 @@ public class TelinkMeshApplication extends MeshApplication {
   }
 
   private void loadSortType() {
-    int type = SharedPreferenceHelper.getNodeSortType(this);
+    int type = SharedPreferenceHelper.getNodeSortType(mCtx);
     sortType = NodeSortType.values()[type];
     if (sortType == null) {
       sortType = NodeSortType.NAME_ASC;
@@ -551,7 +559,7 @@ public class TelinkMeshApplication extends MeshApplication {
   }
 
   public void resetNodeState() {
-    MeshInfo mesh = TelinkBleMeshHandler.getInstance().getMeshInfo();
+    MeshInfo mesh = TelinkMeshApplication.getInstance().getMeshInfo();
     if (mesh.nodes != null) {
       for (NodeInfo deviceInfo : mesh.nodes) {
         MeshNodeStatus meshNodeStatusObject = getMeshNodeStatusObject(deviceInfo.meshAddress);
@@ -561,6 +569,16 @@ public class TelinkMeshApplication extends MeshApplication {
         deviceInfo.temp = 0;
         meshNodeStatusObject.setLum(0);
         meshNodeStatusObject.setTemp(0);
+      }
+    }
+  }
+
+  private void initDb(Context context) {
+    if (!ObjectBox.init(context)) {
+      MeshLogger.d("init db error");
+      ObjectBox.deleteAll(getApplicationContext());
+      if (!ObjectBox.init(this)) {
+        MeshLogger.d("init db error - repeat");
       }
     }
   }

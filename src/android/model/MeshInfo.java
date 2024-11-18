@@ -506,7 +506,7 @@ public class MeshInfo implements Serializable, Cloneable {
     // context.getResources().getStringArray(R.array.group_name);
     String[] groupNames = { "Kitchen", "Balcony" };
     GroupInfo group;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 2; i++) {
       group = new GroupInfo();
       group.address = i | 0xC000;
       group.name = groupNames[i];
@@ -578,7 +578,7 @@ public class MeshInfo implements Serializable, Cloneable {
     this.sequenceNumber = 0;
     this.ivIndex = MeshInfo.UNINITIALIZED_IVI;
 
-    String pvUUID = SharedPreferenceHelper.getLocalUUID(TelinkMeshApplication.getInstance());
+    String pvUUID = SharedPreferenceHelper.getLocalUUID(TelinkMeshApplication.getInstance().getApplicationContext());
     Provisioner provisioner = new Provisioner();
     provisioner.provisionerName = PROVISIONER_NAME_DEFAULT;
     provisioner.UUID = pvUUID;
