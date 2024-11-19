@@ -1470,7 +1470,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
       dp = new DeviceProvisioning();
       dp.initialize(cordova.getActivity().getApplication(), cordova.getActivity(), callbackContext);
     }
-//    dp.stop();
+    // dp.stop();
     dp.setCallbackContext(callbackContext);
     dp.startScan();
   }
