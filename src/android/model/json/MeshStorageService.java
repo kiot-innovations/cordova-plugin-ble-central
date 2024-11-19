@@ -279,7 +279,7 @@ public class MeshStorageService {
       meshStorage.groups.add(group);
     }
 
-    if (SharedPreferenceHelper.isLevelServiceEnable(TelinkMeshApplication.getInstance())) {
+    if (SharedPreferenceHelper.isLevelServiceEnable(TelinkMeshApplication.getInstance().getApplicationContext())) {
       // add extend groups
       groups = mesh.extendGroups;
       for (int i = 0; i < groups.size(); i++) {
@@ -407,7 +407,7 @@ public class MeshStorageService {
       meshStorage.groups.add(group);
     }
 
-    if (SharedPreferenceHelper.isLevelServiceEnable(TelinkMeshApplication.getInstance())) {
+    if (SharedPreferenceHelper.isLevelServiceEnable(TelinkMeshApplication.getInstance().getApplicationContext())) {
       // add extend groups
       groups = mesh.extendGroups;
       for (int i = 0; i < groups.size(); i++) {
@@ -721,7 +721,7 @@ public class MeshStorageService {
   // convert nodeInfo(mesh.java) to node(json)
   public MeshStorage.Node convertDeviceInfoToNode(NodeInfo deviceInfo, int appKeyIndex) {
     MeshStorage.Node node = new MeshStorage.Node();
-    boolean levelServiceEnable = SharedPreferenceHelper.isLevelServiceEnable(TelinkMeshApplication.getInstance());
+    boolean levelServiceEnable = SharedPreferenceHelper.isLevelServiceEnable(TelinkMeshApplication.getInstance().getApplicationContext());
     node.UUID = MeshUtils.byteArrayToUuid(deviceInfo.deviceUUID);
     node.unicastAddress = String.format("%04X", deviceInfo.meshAddress);
 

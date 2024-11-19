@@ -166,7 +166,7 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
     this.meshInfo = meshInfo;
     MeshInfoService.getInstance().addMeshInfo(meshInfo);
     SharedPreferenceHelper.setSelectedMeshId(ctx, meshInfo.id);
-
+    SharedPreferenceHelper.setLevelServiceEnable(ctx, true);
     loadSortType();
   }
 
@@ -199,11 +199,11 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
   }
 
   public void setupMesh(MeshInfo mesh) {
-    SharedPreferenceHelper.setSelectedMeshId(this, mesh.id);
+    SharedPreferenceHelper.setSelectedMeshId(mCtx, mesh.id);
 
     MeshLogger.d("setup mesh info: " + mesh.toString());
     if (mesh.extendGroups.size() == 0) {
-      if (SharedPreferenceHelper.isLevelServiceEnable(this)) {
+      if (SharedPreferenceHelper.isLevelServiceEnable(mCtx)) {
         mesh.addExtendGroups();
       }
     }
@@ -234,7 +234,7 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
 
   public void resetSortType(NodeSortType sortType) {
     this.sortType = sortType;
-    SharedPreferenceHelper.setNodeSortType(this, sortType);
+    SharedPreferenceHelper.setNodeSortType(mCtx, sortType);
   }
 
   @Override
