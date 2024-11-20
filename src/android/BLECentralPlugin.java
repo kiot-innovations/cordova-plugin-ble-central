@@ -1674,11 +1674,20 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
       }
       // newMesh.ivIndex = 0;
       // newMesh.sequenceNumber = 1536;
-      // ToVerify:
       TelinkMeshApplication.getInstance().getMeshInfo().saveOrUpdate();
+
+      // ToVerify:
+      // Replace file write with saveOrUpdate, which handles db to save
+      try {
+        newMesh.saveOrUpdate();
+      } catch (Exception e) {
+        e.printStackTrace();
+        // MeshLogger.e("Failed to save mesh: " + e.getMessage());
+      }
       // FileSystem.writeAsObject(cordova.getActivity().getApplicationContext(),
       // MeshInfo.FILE_NAME,
       // newMesh.clone());
+
       Util.sendPluginResult(callbackContext, true);
       // newMesh.saveOrUpdate(cordova.getActivity().getApplicationContext());
       // MeshService.getInstance().idle(true);
