@@ -1,11 +1,22 @@
 package com.megster.cordova.ble.central.model;
 
+import android.util.SparseArray;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+
+import io.objectbox.relation.ToMany;
+
 public class MeshNodeStatus {
     private int meshAddress;
     private boolean onOff;
     private int lum;
     private int temp;
     boolean isOnline;
+    private ArrayList<NodeSensorState> sensorStates;
 
     private EventsCallback mEventsCallback;
 
@@ -13,6 +24,7 @@ public class MeshNodeStatus {
 
     public MeshNodeStatus(int meshAddress) {
         this.meshAddress = meshAddress;
+        this.sensorStates = new ArrayList<>();
     }
 
     public void setOnOff(boolean onOff) {
@@ -26,7 +38,7 @@ public class MeshNodeStatus {
 
     public void setOnlineStatus(boolean isOnline) {
         this.isOnline = isOnline;
-//        this.mEventsCallback.onChange(this);
+        // this.mEventsCallback.onChange(this);
     }
 
     public boolean getOnlineStatus() {
@@ -49,6 +61,27 @@ public class MeshNodeStatus {
 
     public int getTemp() {
         return temp;
+    }
+
+    public void setSensorState(SparseArray<byte[]> sensorData) {
+        try {
+            NodeSensorState st;
+            this.sensorStates.clear();
+
+            for (int i = 0; i < sensorData.size(); i++) {
+                st = new NodeSensorState();
+                st.propertyID = sensorData.keyAt(i);
+                st.state = sensorData.valueAt(i);
+                sensorStates.add(st);
+            }
+            this.mEventsCallback.onChange(this);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public ArrayList<NodeSensorState> getSensorStateList() {
+        return sensorStates;
     }
 
     public int getMeshAddress() {

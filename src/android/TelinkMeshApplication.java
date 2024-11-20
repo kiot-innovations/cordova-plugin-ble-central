@@ -27,6 +27,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 import android.content.Context;
+import android.util.SparseArray;
 
 import com.google.gson.Gson;
 import com.telink.ble.mesh.core.message.MeshSigModel;
@@ -54,18 +55,21 @@ import com.megster.cordova.ble.central.model.AppSettings;
 import com.megster.cordova.ble.central.model.MeshInfo;
 import com.megster.cordova.ble.central.model.MeshNodeStatus;
 import com.megster.cordova.ble.central.model.NodeInfo;
+import com.megster.cordova.ble.central.model.NodeSensorState;
 import com.megster.cordova.ble.central.model.NodeStatusChangedEvent;
 import com.megster.cordova.ble.central.model.OnlineState;
 import com.megster.cordova.ble.central.model.UnitConvert;
 import com.megster.cordova.ble.central.model.db.MeshInfoService;
 import com.megster.cordova.ble.central.model.db.ObjectBox;
 import com.megster.cordova.ble.central.AppCrashHandler;
+import com.telink.ble.mesh.util.Arrays;
 import com.telink.ble.mesh.util.MeshLogger;
 import com.telink.ble.mesh.foundation.parameter.AutoConnectParameters;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.LOG;
 import org.apache.cordova.PluginResult;
+import org.json.JSONException;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -280,7 +284,7 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
           }
           int lightnessEleAdr = onlineDevice.getTargetEleAdr(MeshSigModel.SIG_MD_LIGHTNESS_S.modelId);
           if (lightnessEleAdr == srcAdr) {
-            if (onLumStatus(onlineDevice, tarVal)) {
+            if (onLumStatus(onlineDevice, tarVal, srcAdr)) {
               statusChangedNode = onlineDevice;
             }
 
@@ -302,7 +306,7 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
           if (onlineDevice.meshAddress == srcAdr) {
             int lum = ctlStatusMessage.isComplete() ? ctlStatusMessage.getTargetLightness()
                 : ctlStatusMessage.getPresentLightness();
-            if (onLumStatus(onlineDevice, UnitConvert.lightness2lum(lum))) {
+            if (onLumStatus(onlineDevice, UnitConvert.lightness2lum(lum), srcAdr)) {
               statusChangedNode = onlineDevice;
             }
 
@@ -321,7 +325,7 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
           if (onlineDevice.meshAddress == srcAdr) {
             int lum = lightnessStatusMessage.isComplete() ? lightnessStatusMessage.getTargetLightness()
                 : lightnessStatusMessage.getPresentLightness();
-            if (onLumStatus(onlineDevice, UnitConvert.lightness2lum(lum))) {
+            if (onLumStatus(onlineDevice, UnitConvert.lightness2lum(lum), srcAdr)) {
               statusChangedNode = onlineDevice;
             }
             break;
@@ -345,7 +349,12 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
         for (NodeInfo onlineDevice : meshInfo.nodes) {
           if (onlineDevice.meshAddress == srcAdr) {
             if (onlineDevice.updateSensorState(sensorStatus.sensorData)) {
-              statusChangedNode = onlineDevice;
+                try {
+                    onSensorStatus(onlineDevice, sensorStatus.sensorData);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+                statusChangedNode = onlineDevice;
             }
             break;
           }
@@ -358,16 +367,22 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
     }
   }
 
-  private boolean onLumStatus(NodeInfo nodeInfo, int lum) {
+  private boolean onLumStatus(NodeInfo nodeInfo, int lum, int meshAddress) {
     boolean statusChanged = false;
     int tarOnOff = lum > 0 ? 1 : 0;
     if (nodeInfo.getOnlineState().st != tarOnOff) {
       statusChanged = true;
     }
     nodeInfo.setOnlineState(OnlineState.getBySt(tarOnOff));
-    if (nodeInfo.lum != lum) {
+    MeshNodeStatus meshNodeStatusObject = getMeshNodeStatusObject(meshAddress);
+    // meshNodeStatusObject.setOnOff(tarOnOff == 1);
+    meshNodeStatusObject.setOnlineStatus(true);
+    if (nodeInfo.lum != lum && nodeInfo.meshAddress == meshAddress) {
       statusChanged = true;
       nodeInfo.lum = lum;
+    }
+    if (meshNodeStatusObject.getOnOff()) {
+      meshNodeStatusObject.setLum(lum);
     }
     return statusChanged;
   }
@@ -378,7 +393,16 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
       statusChanged = true;
       nodeInfo.temp = temp;
     }
+    MeshNodeStatus meshNodeStatusObject = getMeshNodeStatusObject(nodeInfo.meshAddress);
+    meshNodeStatusObject.setOnlineStatus(true);
+    meshNodeStatusObject.setTemp(temp);
     return statusChanged;
+  }
+
+  private void onSensorStatus(NodeInfo nodeInfo, SparseArray<byte[]> sensorData) throws JSONException {
+    MeshNodeStatus meshNodeStatusObject = getMeshNodeStatusObject(nodeInfo.meshAddress);
+    meshNodeStatusObject.setOnlineStatus(true);
+    meshNodeStatusObject.setSensorState(sensorData);
   }
 
   /**
