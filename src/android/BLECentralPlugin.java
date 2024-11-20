@@ -2242,8 +2242,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         }
         if (changeDetected) {
           meshInfo.saveOrUpdate();
-          // ToVerify
-          // MeshService.getInstance().setSequenceNumber(meshInfo.sequenceNumber, false);
+           MeshService.getInstance().setSequenceNumber(meshInfo.sequenceNumber, false);
           // MeshService.getInstance().idle(true);
           // TelinkMeshApplication.getInstance().setupMesh(meshInfo);
           // meshHandler.setMeshInfo(meshInfo);

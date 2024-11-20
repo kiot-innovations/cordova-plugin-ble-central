@@ -507,10 +507,7 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
                   }
                 }
                 if (failedCount > 2) {
-                  // ToVerify:
-                  // MeshService.getInstance()
-                  // .setSequenceNumber(MeshService.getInstance().getSequenceNumber() +
-                  // autoHealSeqNumberIncBy, false);
+                   MeshService.getInstance().setSequenceNumber(MeshService.getInstance().getSequenceNumber() + autoHealSeqNumberIncBy, false);
                 }
               }
             }
