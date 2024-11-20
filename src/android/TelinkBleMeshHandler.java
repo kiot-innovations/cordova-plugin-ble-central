@@ -403,13 +403,15 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
         meshNodeStatusObject.setOnlineStatus(false);
       }
       // ToVerfy:
-//      if (MeshService.getInstance() != null
-//          && MeshService.getInstance().getActionMode().equals(MeshController.Mode.AUTO_CONNECT)) {
-//        if (autoConnectFailures.size() > 10) {
-//          autoConnectFailures.subList(0, autoConnectFailures.size() - 3).clear();
-//        }
-//        autoConnectFailures.add(System.currentTimeMillis());
-//      }
+      // if (MeshService.getInstance() != null
+      // &&
+      // MeshService.getInstance().getActionMode().equals(MeshController.Mode.AUTO_CONNECT))
+      // {
+      // if (autoConnectFailures.size() > 10) {
+      // autoConnectFailures.subList(0, autoConnectFailures.size() - 3).clear();
+      // }
+      // autoConnectFailures.add(System.currentTimeMillis());
+      // }
     }
   }
 
@@ -507,8 +509,9 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
                 }
                 if (failedCount > 2) {
                   // ToVerify:
-//                  MeshService.getInstance()
-//                      .setSequenceNumber(MeshService.getInstance().getSequenceNumber() + autoHealSeqNumberIncBy, false);
+                  // MeshService.getInstance()
+                  // .setSequenceNumber(MeshService.getInstance().getSequenceNumber() +
+                  // autoHealSeqNumberIncBy, false);
                 }
               }
             }
@@ -557,25 +560,25 @@ public class TelinkBleMeshHandler extends MeshApplication implements EventHandle
     int c = 0;
     int eleAdr = nodeInfo.meshAddress;
     // ToVerfy:
-//    for (CompositionData.Element element : nodeInfo.compositionData.elements) {
-//      if (element.sigModels != null) {
-//        for (int modelId : element.sigModels) {
-//          if (modelId == tarModelId) {
-//            res[c++] = eleAdr;
-//          }
-//        }
-//      }
-//
-//      if (element.vendorModels != null) {
-//        for (int modelId : element.vendorModels) {
-//          if (modelId == tarModelId) {
-//            res[c++] = eleAdr;
-//          }
-//        }
-//      }
-//
-//      eleAdr++;
-//    }
+    // for (CompositionData.Element element : nodeInfo.compositionData.elements) {
+    // if (element.sigModels != null) {
+    // for (int modelId : element.sigModels) {
+    // if (modelId == tarModelId) {
+    // res[c++] = eleAdr;
+    // }
+    // }
+    // }
+    //
+    // if (element.vendorModels != null) {
+    // for (int modelId : element.vendorModels) {
+    // if (modelId == tarModelId) {
+    // res[c++] = eleAdr;
+    // }
+    // }
+    // }
+    //
+    // eleAdr++;
+    // }
 
     if (c == 0) {
       return null;
