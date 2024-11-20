@@ -2026,7 +2026,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
   public void mesh_subscribeToMeshEvents(CordovaArgs args, CallbackContext callbackContext) throws Exception {
     try {
       meshEventCallback = callbackContext;
-      // TelinkMeshApplication.getInstance().setMeshEventCallback(meshEventCallback);
+      TelinkMeshApplication.getInstance().setMeshEventCallback(meshEventCallback);
     } catch (Exception e) {
       Util.sendPluginResult(callbackContext, e.getMessage());
     }
