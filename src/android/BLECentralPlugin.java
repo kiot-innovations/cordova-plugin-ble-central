@@ -54,6 +54,7 @@ import com.megster.cordova.ble.central.model.MeshNetKey;
 import com.megster.cordova.ble.central.model.NetworkingDevice;
 import com.megster.cordova.ble.central.model.NetworkingState;
 import com.megster.cordova.ble.central.model.NodeInfo;
+import com.megster.cordova.ble.central.model.NodeSensorState;
 import com.megster.cordova.ble.central.model.NodeStatusChangedEvent;
 import com.megster.cordova.ble.central.model.OnlineState;
 import com.megster.cordova.ble.central.model.PrivateDevice;
@@ -78,6 +79,7 @@ import com.telink.ble.mesh.core.message.generic.OnOffGetMessage;
 import com.telink.ble.mesh.core.message.generic.OnOffSetMessage;
 import com.telink.ble.mesh.core.message.lighting.CtlTemperatureSetMessage;
 import com.telink.ble.mesh.core.message.lighting.LightnessSetMessage;
+import com.telink.ble.mesh.core.message.sensor.SensorGetMessage;
 import com.telink.ble.mesh.core.message.time.TimeSetMessage;
 import com.telink.ble.mesh.entity.BindingDevice;
 import com.telink.ble.mesh.entity.CompositionData;
@@ -2013,6 +2015,8 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         Util.sendPluginResult(callbackContext, (String) null);
         return;
       }
+      SensorGetMessage sensormessage = new SensorGetMessage(0xFFFF, appKeyIndex);
+      MeshService.getInstance().sendMeshMessage(sensormessage);
       // String json = new Gson().toJson(meshInfo.nodes);
       String json = new Gson().toJson(TelinkMeshApplication.getInstance().getAllMeshNodeStatusObjects());
       Util.sendPluginResult(callbackContext, json);
@@ -2242,7 +2246,7 @@ public class BLECentralPlugin extends CordovaPlugin implements EventListener<Str
         }
         if (changeDetected) {
           meshInfo.saveOrUpdate();
-           MeshService.getInstance().setSequenceNumber(meshInfo.sequenceNumber, false);
+          MeshService.getInstance().setSequenceNumber(meshInfo.sequenceNumber, false);
           // MeshService.getInstance().idle(true);
           // TelinkMeshApplication.getInstance().setupMesh(meshInfo);
           // meshHandler.setMeshInfo(meshInfo);
