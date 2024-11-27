@@ -259,6 +259,8 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
     StatusMessage statusMessage = message.getStatusMessage();
     if (statusMessage != null) {
       NodeInfo statusChangedNode = null;
+      MeshNodeStatus meshNodeStatusObject = getMeshNodeStatusObject(message.getSrc());
+      meshNodeStatusObject.setOnlineStatus(true);
       if (message.getStatusMessage() instanceof OnOffStatusMessage) {
         OnOffStatusMessage onOffStatusMessage = (OnOffStatusMessage) statusMessage;
         int onOff = onOffStatusMessage.isComplete() ? onOffStatusMessage.getTargetOnOff()
@@ -269,6 +271,7 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
               statusChangedNode = nodeInfo;
             }
             nodeInfo.setOnlineState(OnlineState.getBySt(onOff));
+            meshNodeStatusObject.setOnOff(onOff == 1);
             break;
           }
         }
@@ -349,12 +352,12 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
         for (NodeInfo onlineDevice : meshInfo.nodes) {
           if (onlineDevice.meshAddress == srcAdr) {
             if (onlineDevice.updateSensorState(sensorStatus.sensorData)) {
-                try {
-                    onSensorStatus(onlineDevice, sensorStatus.sensorData);
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
-                }
-                statusChangedNode = onlineDevice;
+              try {
+                onSensorStatus(onlineDevice, sensorStatus.sensorData);
+              } catch (JSONException e) {
+                throw new RuntimeException(e);
+              }
+              statusChangedNode = onlineDevice;
             }
             break;
           }
@@ -421,6 +424,7 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
         if (onlineStatusInfo.status == null || onlineStatusInfo.status.length < 3)
           break;
         NodeInfo deviceInfo = meshInfo.getDeviceByMeshAddress(onlineStatusInfo.address);
+        MeshNodeStatus meshNodeStatusObject = getMeshNodeStatusObject(onlineStatusInfo.address);
         if (deviceInfo == null)
           continue;
         int onOff;
@@ -442,6 +446,8 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
           statusChangedNode = deviceInfo;
         }
         deviceInfo.setOnlineState(OnlineState.getBySt(onOff));
+        meshNodeStatusObject.setOnlineStatus(onOff != -1);
+        meshNodeStatusObject.setOnOff(onOff == 1);
         if (deviceInfo.lum != onlineStatusInfo.status[0]) {
           statusChangedNode = deviceInfo;
           deviceInfo.lum = onlineStatusInfo.status[0];
@@ -507,7 +513,8 @@ public class TelinkMeshApplication extends MeshApplication implements EventHandl
                   }
                 }
                 if (failedCount > 2) {
-                   MeshService.getInstance().setSequenceNumber(MeshService.getInstance().getSequenceNumber() + autoHealSeqNumberIncBy, false);
+                  MeshService.getInstance()
+                      .setSequenceNumber(MeshService.getInstance().getSequenceNumber() + autoHealSeqNumberIncBy, false);
                 }
               }
             }
